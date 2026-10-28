@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+/*
+ * Cor de marca padrão. O cardápio público sobrescreve --color-brand com a cor
+ * configurada pelo restaurante (ver features/customization).
+ */
+@theme {
+  --color-brand: #9a3412;
+  --color-brand-soft: #fef3c7;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-stone-50 text-stone-900 antialiased;
+  }
+}

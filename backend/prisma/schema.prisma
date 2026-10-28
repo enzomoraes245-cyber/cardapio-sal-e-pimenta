@@ -1,0 +1,118 @@
+// Modelagem inicial do Cardápio Digital (MVP).
+// Convenções: ids UUID, tabelas e colunas em snake_case, timestamps em todas as entidades de negócio.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Estabelecimento (tenant). Todo dado de negócio pertence a exatamente um restaurante.
+model Restaurant {
+  id        String   @id @default(uuid()) @db.Uuid
+  /// Identificador público e estável usado na URL do cardápio e no QR Code.
+  slug      String   @unique @db.VarChar(80)
+  name      String   @db.VarChar(120)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  adminUsers    AdminUser[]
+  categories    Category[]
+  products      Product[]
+  customization RestaurantCustomization?
+
+  @@map("restaurants")
+}
+
+/// Usuário da retaguarda. Pertence a um único restaurante.
+model AdminUser {
+  id           String   @id @default(uuid()) @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  name         String   @db.VarChar(120)
+  /// Único globalmente: o login identifica o restaurante a partir do usuário.
+  email        String   @unique @db.VarChar(254)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  restaurant Restaurant     @relation(fields: [restaurantId], references: [id])
+  sessions   AdminSession[]
+
+  @@index([restaurantId])
+  @@map("admin_users")
+}
+
+/// Sessão administrativa. Guarda apenas o hash SHA-256 do token enviado no cookie HttpOnly.
+model AdminSession {
+  id          String   @id @default(uuid()) @db.Uuid
+  adminUserId String   @map("admin_user_id") @db.Uuid
+  tokenHash   String   @unique @map("token_hash") @db.Char(64)
+  expiresAt   DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+  @@map("admin_sessions")
+}
+
+model Category {
+  id           String   @id @default(uuid()) @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  name         String   @db.VarChar(80)
+  /// Ordem de exibição no cardápio (crescente).
+  position     Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  products   Product[]
+
+  /// Alvo da FK composta de Product: garante que produto e categoria sejam do mesmo restaurante.
+  @@unique([id, restaurantId])
+  @@index([restaurantId, position])
+  @@map("categories")
+}
+
+model Product {
+  id           String   @id @default(uuid()) @db.Uuid
+  restaurantId String   @map("restaurant_id") @db.Uuid
+  categoryId   String   @map("category_id") @db.Uuid
+  name         String   @db.VarChar(120)
+  description  String?  @db.VarChar(1000)
+  /// Valor monetário com precisão decimal (nunca ponto flutuante).
+  price        Decimal  @db.Decimal(10, 2)
+  /// Chave do arquivo no serviço de armazenamento (não a imagem em si).
+  imageKey     String?  @map("image_key") @db.VarChar(255)
+  isAvailable  Boolean  @default(true) @map("is_available")
+  /// Ordem de exibição dentro da categoria (crescente).
+  position     Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  category   Category   @relation(fields: [categoryId, restaurantId], references: [id, restaurantId])
+
+  @@index([categoryId, restaurantId])
+  @@index([restaurantId, isAvailable])
+  @@map("products")
+}
+
+/// Identidade visual do restaurante (relação 1:1). O nome fica em Restaurant.
+model RestaurantCustomization {
+  restaurantId   String   @id @map("restaurant_id") @db.Uuid
+  logoKey        String?  @map("logo_key") @db.VarChar(255)
+  /// Cores em hexadecimal (#RRGGBB).
+  primaryColor   String?  @map("primary_color") @db.Char(7)
+  secondaryColor String?  @map("secondary_color") @db.Char(7)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@map("restaurant_customizations")
+}

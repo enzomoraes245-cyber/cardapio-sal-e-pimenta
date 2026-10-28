@@ -1,0 +1,180 @@
+# Cardápio Digital
+
+Sistema SaaS multi-restaurante para publicação de cardápios acessados por QR Code.
+
+Cada restaurante tem sua retaguarda, categorias, produtos (preços, fotos e disponibilidade),
+identidade visual, URL pública e QR Code. O cliente final abre o cardápio no celular, sem login,
+e vê as alterações da retaguarda automaticamente, mesmo com a página aberta.
+
+> **Etapa atual: fundação técnica.** Estão prontos a estrutura do monorepo, a modelagem do banco,
+> a infraestrutura de segurança multi-tenant, o health check, a consulta pública do cardápio e a
+> atualização em tempo real (SSE). Login, cadastros e telas administrativas vêm nas próximas etapas.
+
+## 1. Visão geral
+
+```text
+Celular do cliente ──► Frontend (React) ──► /api/v1/public/...  ──┐
+                                                                  ├─► Backend (Express) ──► PostgreSQL
+Retaguarda         ──► Frontend (React) ──► /api/v1/admin/...  ───┘          │
+                                                                      SSE por restaurante
+```
+
+- **Backend** (`backend/`): regras de negócio, autenticação, isolamento entre restaurantes e persistência.
+- **Frontend** (`frontend/`): retaguarda (`/admin`) e cardápio público (`/cardapio/:slug`).
+
+Detalhes em [docs/architecture](docs/architecture/README.md).
+
+## 2. Tecnologias
+
+| Camada    | Tecnologias                                                                        |
+| --------- | ---------------------------------------------------------------------------------- |
+| Backend   | Node.js 24 LTS, Express 5, Prisma 6, PostgreSQL 17, Zod 4, Helmet, SSE             |
+| Frontend  | React 19, Vite 8, React Router 8, Tailwind CSS 4, Fetch API (cliente centralizado) |
+| Qualidade | ESLint 9, Prettier 3, Vitest 5, Supertest, Testing Library                         |
+| Infra     | Docker Compose (PostgreSQL local), npm workspaces                                  |
+
+## 3. Estrutura de diretórios
+
+```text
+cardapio-digital/
+├── backend/
+│   ├── prisma/                 # schema.prisma, migrations/ e seed.js
+│   ├── src/
+│   │   ├── config/             # env.js (validação), database.js (Prisma), storage.js
+│   │   ├── middlewares/        # auth, tenant, validate, error
+│   │   ├── modules/            # um diretório por domínio (routes → controller → service → repository)
+│   │   ├── routes/index.js     # monta /api/v1 (health, public, admin)
+│   │   ├── shared/             # errors/, events/ (SSE por restaurante), utils/
+│   │   ├── app.js              # cria a aplicação Express
+│   │   └── server.js           # abre a porta e trata encerramento
+│   └── tests/                  # unit/ e integration/
+├── frontend/
+│   ├── src/
+│   │   ├── app/                # App, router, providers
+│   │   ├── layouts/            # AdminLayout, PublicMenuLayout
+│   │   ├── features/           # um diretório por funcionalidade
+│   │   ├── components/         # ui/ (genéricos) e shared/ (da aplicação)
+│   │   ├── hooks/ services/ utils/ styles/
+│   │   └── main.jsx
+│   └── tests/
+├── docs/                       # architecture/, database/, api/, requirements/
+├── docker-compose.yml
+├── eslint.config.js
+└── package.json                # workspaces e scripts globais
+```
+
+Diretórios de módulos ainda não implementados (ex.: `modules/products`) existem vazios e recebem
+arquivos à medida que as funcionalidades forem desenvolvidas.
+
+## 4. Requisitos
+
+- **Node.js 24 LTS** (mínimo 22.22.2) e npm 10+
+- **Docker Desktop** (com WSL2 no Windows) **ou** um PostgreSQL 15+ acessível
+- Git
+
+## 5. Variáveis de ambiente
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+**Backend (`backend/.env`)**
+
+| Variável              | Descrição                                                       | Padrão            |
+| --------------------- | --------------------------------------------------------------- | ----------------- |
+| `NODE_ENV`            | `development`, `test` ou `production`                           | `development`     |
+| `PORT`                | Porta da API                                                    | `3333`            |
+| `DATABASE_URL`        | URL de conexão PostgreSQL (**obrigatória**)                     | —                 |
+| `CORS_ORIGINS`        | Origens permitidas, separadas por vírgula. Vazio = mesma origem | vazio             |
+| `SESSION_COOKIE_NAME` | Nome do cookie de sessão administrativa                         | `cd_session`      |
+| `STORAGE_DRIVER`      | Armazenamento de imagens (por enquanto só `local`)              | `local`           |
+| `STORAGE_LOCAL_DIR`   | Pasta dos arquivos do driver local                              | `storage/uploads` |
+| `SEED_ADMIN_EMAIL`    | E-mail do admin criado pelo seed                                | —                 |
+| `SEED_ADMIN_PASSWORD` | Senha do admin do seed (mín. 8). Vazio = não cria o usuário     | —                 |
+
+A API valida as variáveis ao iniciar e encerra com mensagem clara se alguma for inválida.
+
+**Frontend (`frontend/.env`)**
+
+| Variável            | Descrição                                                           | Padrão                  |
+| ------------------- | ------------------------------------------------------------------- | ----------------------- |
+| `VITE_API_BASE_URL` | Base da API usada pelo navegador (vai para o bundle público)        | `/api/v1`               |
+| `API_PROXY_TARGET`  | Destino do proxy do Vite em desenvolvimento (não vai para o bundle) | `http://localhost:3333` |
+
+> Toda variável `VITE_*` fica visível no navegador. Nunca coloque segredos no frontend.
+
+## 6. PostgreSQL
+
+```bash
+npm run db:up
+```
+
+Sobe o container `cardapio-digital-postgres` (PostgreSQL 17, porta 5432, usuário/senha `cardapio`).
+Para usar um PostgreSQL já instalado, basta ajustar `DATABASE_URL` em `backend/.env`.
+
+## 7. Instalação e migrations
+
+```bash
+npm install          # instala os dois workspaces e gera o Prisma Client
+npm run db:migrate   # aplica as migrations (prisma migrate dev)
+npm run db:seed      # opcional: cria o restaurante de demonstração "demo"
+```
+
+Em produção, use `npm run db:deploy -w backend` (aplica migrations sem gerar novas).
+
+> **Windows:** pare o backend antes de `db:migrate` ou `prisma generate`. Com a API rodando, o
+> Windows bloqueia a DLL do Prisma e a geração do client falha com `EPERM` (a migration é aplicada
+> mesmo assim).
+>
+> **npm 11:** os scripts de instalação do Prisma estão aprovados em `allowScripts` no
+> `package.json` raiz. Ao atualizar o Prisma, aprove a nova versão com
+> `npm install-scripts approve @prisma/client @prisma/engines prisma`.
+
+## 8. Backend
+
+```bash
+npm run dev:backend
+```
+
+API em `http://localhost:3333/api/v1`. Teste rápido:
+
+```bash
+curl http://localhost:3333/api/v1/health
+```
+
+Resposta esperada: `{"data":{"status":"ok","database":"up","timestamp":"..."}}`.
+
+## 9. Frontend
+
+Em outro terminal:
+
+```bash
+npm run dev:frontend
+```
+
+- Retaguarda: `http://localhost:5173/admin` — mostra o status da conexão frontend → API → banco.
+- Cardápio de demonstração (após o seed): `http://localhost:5173/cardapio/demo`.
+
+O Vite encaminha `/api` e `/uploads` para o backend, então frontend e API ficam na mesma origem
+(sem CORS em desenvolvimento e com cookies de sessão funcionando normalmente).
+
+## 10. Testes e qualidade
+
+```bash
+npm test               # testes do backend e do frontend
+npm run test -w backend
+npm run test -w frontend
+npm run lint           # ESLint
+npm run format:check   # Prettier
+```
+
+Os testes de integração do backend usam o PostgreSQL configurado em `DATABASE_URL`. Eles criam
+restaurantes próprios com slugs aleatórios e os removem ao final, sem tocar nos dados existentes.
+
+## Documentação
+
+- [Arquitetura](docs/architecture/README.md)
+- [Banco de dados](docs/database/README.md)
+- [API](docs/api/README.md)
+- [Requisitos e decisões pendentes](docs/requirements/README.md)

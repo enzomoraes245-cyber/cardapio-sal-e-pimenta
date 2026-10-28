@@ -1,0 +1,31 @@
+/**
+ * Erro de aplicação com status HTTP e código estável.
+ * Lançado pelos services e convertido em resposta JSON pelo error.middleware.
+ */
+export class AppError extends Error {
+  constructor(message, { statusCode = 500, code = 'INTERNAL_ERROR', details } = {}) {
+    super(message);
+    this.name = this.constructor.name;
+    this.statusCode = statusCode;
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(details, message = 'Dados inválidos.') {
+    super(message, { statusCode: 400, code: 'VALIDATION_ERROR', details });
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor(message = 'Autenticação necessária.') {
+    super(message, { statusCode: 401, code: 'UNAUTHORIZED' });
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(message = 'Recurso não encontrado.') {
+    super(message, { statusCode: 404, code: 'NOT_FOUND' });
+  }
+}

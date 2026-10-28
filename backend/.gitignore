@@ -1,0 +1,8 @@
+node_modules/
+coverage/
+.env
+.env.*
+!.env.example
+
+# Arquivos enviados localmente (driver de armazenamento "local")
+storage/
