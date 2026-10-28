@@ -1,0 +1,12 @@
+# Quebras de linha LF em todos os sistemas (alinhado ao .editorconfig e ao Prettier).
+* text=auto eol=lf
+
+# Arquivos binários: nunca converter.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
