@@ -54,10 +54,10 @@ export function PublicMenuPage() {
   });
 
   return (
-    <div style={getBrandStyle(menu.restaurant)}>
+    <div style={getBrandStyle(menu.restaurant)} className="min-h-dvh bg-brand-soft">
       <MenuHeader restaurant={menu.restaurant} />
 
-      <div className="sticky top-0 z-10 space-y-3 border-b border-stone-200 bg-stone-50/95 px-4 py-3 backdrop-blur">
+      <div className="sticky top-0 z-10 space-y-3 border-b border-stone-200 bg-brand-soft/95 px-4 py-3 backdrop-blur">
         <ProductSearch value={search} onChange={setSearch} />
         {categories.length > 1 && (
           <CategoryTabs

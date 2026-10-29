@@ -37,7 +37,7 @@ function CategoryButton({ selected, onClick, children }) {
       onClick={onClick}
       className={`rounded-full border px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
         selected
-          ? 'border-brand bg-brand text-white'
+          ? 'border-brand bg-brand text-brand-contrast'
           : 'border-stone-300 bg-white text-stone-700 hover:border-stone-400'
       }`}
     >

@@ -8,7 +8,7 @@ export function ProductCard({ product }) {
         {product.shortDescription && (
           <p className="mt-1 line-clamp-2 text-sm text-stone-600">{product.shortDescription}</p>
         )}
-        <p className="mt-2 font-semibold text-brand">{formatPrice(product.price)}</p>
+        <p className="mt-2 font-semibold text-brand-text">{formatPrice(product.price)}</p>
       </div>
       {product.imageUrl && (
         <img

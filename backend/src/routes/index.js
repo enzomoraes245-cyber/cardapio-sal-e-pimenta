@@ -6,6 +6,7 @@ import { requireTenant } from '../middlewares/tenant.middleware.js';
 import { authRoutes } from '../modules/auth/auth.routes.js';
 import { availabilityRoutes } from '../modules/availability/availability.routes.js';
 import { categoryRoutes } from '../modules/categories/category.routes.js';
+import { customizationRoutes } from '../modules/customization/customization.routes.js';
 import { menuRoutes } from '../modules/menu/menu.routes.js';
 import { categoryProductRoutes, productRoutes } from '../modules/products/product.routes.js';
 
@@ -35,4 +36,5 @@ const adminRouter = Router();
 adminRouter.use(requireAdmin, requireTenant);
 adminRouter.use('/categories', categoryRoutes, categoryProductRoutes);
 adminRouter.use('/products', productRoutes, availabilityRoutes);
+adminRouter.use('/customization', customizationRoutes);
 apiRouter.use('/admin', adminRouter);

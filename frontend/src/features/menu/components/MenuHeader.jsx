@@ -1,6 +1,6 @@
 export function MenuHeader({ restaurant }) {
   return (
-    <header className="bg-brand px-4 pt-8 pb-6 text-white">
+    <header className="bg-brand px-4 pt-8 pb-6 text-brand-contrast">
       <div className="flex items-center gap-4">
         {restaurant.logoUrl && (
           <img
