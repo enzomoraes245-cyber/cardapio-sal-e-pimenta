@@ -1,11 +1,29 @@
+import { useCallback } from 'react';
 import { Link } from 'react-router';
 import { Spinner } from '../../../components/ui/Spinner.jsx';
 import { StatusMessage } from '../../../components/ui/StatusMessage.jsx';
+import { ProductStatusToggles } from '../../availability/components/ProductStatusToggles.jsx';
+import { useProductStatus } from '../../availability/hooks/useProductStatus.js';
 import { ProductListItem } from '../components/ProductListItem.jsx';
 import { useProducts } from '../hooks/useProducts.js';
 
 export function ProductsPage() {
-  const { status, error, reload, groups, reordering, actionError, move } = useProducts();
+  const {
+    status,
+    error,
+    reload,
+    groups,
+    reordering,
+    actionError,
+    setActionError,
+    move,
+    replaceProduct,
+  } = useProducts();
+  const handleStatusError = useCallback((err) => setActionError(err.message), [setActionError]);
+  const productStatus = useProductStatus({
+    onUpdated: replaceProduct,
+    onError: handleStatusError,
+  });
   const hasProducts = groups.some((group) => group.products.length > 0);
 
   return (
@@ -66,6 +84,13 @@ export function ProductsPage() {
                     isLast={index === products.length - 1}
                     reordering={reordering}
                     onMove={(offset) => move(category.id, products, index, offset)}
+                    statusControls={
+                      <ProductStatusToggles
+                        product={product}
+                        disabled={productStatus.isSaving(product.id)}
+                        onChange={(field, value) => productStatus.toggle(product, field, value)}
+                      />
+                    }
                   />
                 ))}
               </ol>

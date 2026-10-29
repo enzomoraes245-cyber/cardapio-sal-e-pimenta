@@ -113,17 +113,17 @@ export function ProductForm({ product, categories, submitLabel, onSubmit }) {
             />
           </FormField>
 
-          {!isEdit && (
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium text-slate-800">Situação</legend>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" {...bindCheckbox('isActive')} /> Ativo
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" {...bindCheckbox('isAvailable')} /> Disponível
-              </label>
-            </fieldset>
-          )}
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-slate-800">Situação</legend>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" {...bindCheckbox('isActive')} /> Ativo
+              <span className="text-slate-500">(inativo nunca aparece no cardápio)</span>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" {...bindCheckbox('isAvailable')} /> Disponível
+              <span className="text-slate-500">(desmarque quando o item acabar)</span>
+            </label>
+          </fieldset>
         </div>
 
         <ImageInput

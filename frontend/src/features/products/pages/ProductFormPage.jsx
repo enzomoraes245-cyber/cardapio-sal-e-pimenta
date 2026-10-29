@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { Spinner } from '../../../components/ui/Spinner.jsx';
 import { StatusMessage } from '../../../components/ui/StatusMessage.jsx';
 import { useResource } from '../../../hooks/useResource.js';
+import { updateProductStatus } from '../../availability/services/availability.service.js';
 import { listCategories } from '../../categories/services/categories.service.js';
 import { ProductForm } from '../components/ProductForm.jsx';
 import * as productsService from '../services/products.service.js';
@@ -27,8 +28,12 @@ export function ProductFormPage() {
 
   async function handleSubmit({ image, isActive, isAvailable, ...fields }) {
     if (isEdit) {
+      const current = data.product;
       await productsService.updateProduct(id, fields);
       if (image) await productsService.replaceProductImage(id, image);
+      if (isActive !== current.isActive || isAvailable !== current.isAvailable) {
+        await updateProductStatus(id, { isActive, isAvailable });
+      }
     } else {
       await productsService.createProduct({ ...fields, isActive, isAvailable, image });
     }
