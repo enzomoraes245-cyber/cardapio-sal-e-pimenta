@@ -3,12 +3,22 @@ import { Spinner } from '../../../components/ui/Spinner.jsx';
 import { StatusMessage } from '../../../components/ui/StatusMessage.jsx';
 import { useSession } from '../hooks/useSession.js';
 
-/** Protege as rotas da retaguarda: sem sessão, redireciona para o login (RN-001). */
-export function RequireAuth() {
-  const { status, refresh } = useSession();
+/** Protege as rotas autenticadas: sem sessão, redireciona para `loginPath` (RN-001). */
+export function RequireAuth({ loginPath }) {
+  const { status, error, refresh, logout } = useSession();
   const location = useLocation();
 
   if (status === 'loading') return <Spinner label="Verificando sessão..." />;
+  if (status === 'suspended') {
+    return (
+      <StatusMessage
+        tone="error"
+        title="Acesso suspenso"
+        description={error.message}
+        action={{ label: 'Sair', onClick: logout }}
+      />
+    );
+  }
   if (status === 'error') {
     return (
       <StatusMessage
@@ -20,7 +30,7 @@ export function RequireAuth() {
     );
   }
   if (status === 'anonymous') {
-    return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
+    return <Navigate to={loginPath} replace state={{ from: location.pathname }} />;
   }
   return <Outlet />;
 }

@@ -6,7 +6,12 @@ import { validateForm } from '../../../utils/validate-form.js';
 import { useSession } from '../hooks/useSession.js';
 import { loginSchema } from '../validators/login.schema.js';
 
-export function LoginPage() {
+/** Tela de login reutilizada pela retaguarda (/admin) e pelo backoffice (/backoffice). */
+export function LoginPage({
+  title = 'Retaguarda',
+  description = 'Entre para gerenciar o cardápio do seu restaurante.',
+  homePath = '/admin',
+}) {
   const { status, login } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
@@ -15,7 +20,7 @@ export function LoginPage() {
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const redirectTo = location.state?.from?.startsWith('/admin') ? location.state.from : '/admin';
+  const redirectTo = location.state?.from?.startsWith(homePath) ? location.state.from : homePath;
   if (status === 'authenticated') return <Navigate to={redirectTo} replace />;
 
   const updateField = (field) => (event) =>
@@ -47,10 +52,8 @@ export function LoginPage() {
         className="w-full max-w-sm space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
       >
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Retaguarda</h1>
-          <p className="text-sm text-slate-600">
-            Entre para gerenciar o cardápio do seu restaurante.
-          </p>
+          <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+          <p className="text-sm text-slate-600">{description}</p>
         </div>
 
         {formError && (

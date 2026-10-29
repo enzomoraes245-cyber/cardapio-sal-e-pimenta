@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parsePriceInput } from '../utils/parse-price.js';
+import { parseMoneyInput } from '../../../utils/money-input.js';
 
 const optionalText = (max) => z.string().trim().max(max, `Use no máximo ${max} caracteres.`);
 
@@ -15,7 +15,7 @@ export function productSchema({ requireImage }) {
       .string()
       .min(1, 'Informe o preço.')
       .transform((value, context) => {
-        const parsed = parsePriceInput(value);
+        const parsed = parseMoneyInput(value);
         if (!parsed) {
           context.addIssue({ code: 'custom', message: 'Informe um preço válido, ex.: 12,50.' });
           return z.NEVER;

@@ -8,7 +8,14 @@ export function logout() {
   return api.post('/auth/logout');
 }
 
-/** Administrador autenticado e restaurante vinculado. */
+/** Administrador autenticado, restaurante vinculado e módulos liberados. */
 export function getCurrentAdmin({ signal } = {}) {
   return api.get('/auth/me', { signal });
 }
+
+/** Serviço de sessão da retaguarda, usado pelo SessionProvider. */
+export const adminSessionService = Object.freeze({
+  getCurrent: getCurrentAdmin,
+  login,
+  logout,
+});

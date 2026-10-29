@@ -1,23 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { formatPriceInput, parsePriceInput } from '../src/features/products/utils/parse-price.js';
+import { formatMoneyInput, parseMoneyInput } from '../src/utils/money-input.js';
 import { productSchema } from '../src/features/products/validators/product.schema.js';
 import { validateForm } from '../src/utils/validate-form.js';
 
-describe('parsePriceInput', () => {
+describe('parseMoneyInput', () => {
+  it('aceita zero somente com allowZero (mensalidade)', () => {
+    expect(parseMoneyInput('0', { allowZero: true })).toBe('0.00');
+    expect(parseMoneyInput('0')).toBeNull();
+  });
+
   it('aceita formatos brasileiros e devolve decimal com 2 casas', () => {
-    expect(parsePriceInput('12,5')).toBe('12.50');
-    expect(parsePriceInput('R$ 1.99')).toBe('1.99');
-    expect(parsePriceInput('68')).toBe('68.00');
+    expect(parseMoneyInput('12,5')).toBe('12.50');
+    expect(parseMoneyInput('R$ 1.99')).toBe('1.99');
+    expect(parseMoneyInput('68')).toBe('68.00');
   });
 
   it('recusa preço zero, negativo, com 3 casas ou texto', () => {
     for (const value of ['0', '0,00', '-5', '10,999', 'abc', '', '1.000,00']) {
-      expect(parsePriceInput(value), value).toBeNull();
+      expect(parseMoneyInput(value), value).toBeNull();
     }
   });
 
   it('formata o preço da API para edição', () => {
-    expect(formatPriceInput('24.90')).toBe('24,90');
+    expect(formatMoneyInput('24.90')).toBe('24,90');
   });
 });
 

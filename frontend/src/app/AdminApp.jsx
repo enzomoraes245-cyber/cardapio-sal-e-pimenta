@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router';
 import { NotFoundPage } from '../components/shared/NotFoundPage.jsx';
 import { RequireAuth } from '../features/auth/components/RequireAuth.jsx';
 import { SessionProvider } from '../features/auth/components/SessionProvider.jsx';
+import { adminSessionService } from '../features/auth/services/auth.service.js';
 import { LoginPage } from '../features/auth/pages/LoginPage.jsx';
 import { CategoriesPage } from '../features/categories/pages/CategoriesPage.jsx';
 import { CustomizationPage } from '../features/customization/pages/CustomizationPage.jsx';
@@ -17,10 +18,10 @@ import { AdminLayout } from '../layouts/AdminLayout.jsx';
  */
 export default function AdminApp() {
   return (
-    <SessionProvider>
+    <SessionProvider service={adminSessionService}>
       <Routes>
         <Route path="login" element={<LoginPage />} />
-        <Route element={<RequireAuth />}>
+        <Route element={<RequireAuth loginPath="/admin/login" />}>
           <Route element={<AdminLayout />}>
             <Route index element={<AdminHomePage />} />
             <Route path="categorias" element={<CategoriesPage />} />

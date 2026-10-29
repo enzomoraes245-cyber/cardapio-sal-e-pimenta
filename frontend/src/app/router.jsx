@@ -8,6 +8,7 @@ import { PublicMenuLayout } from '../layouts/PublicMenuLayout.jsx';
 
 // Retaguarda e backoffice ficam em chunks separados: o cardápio público (celular) não os baixa.
 const AdminApp = lazy(() => import('./AdminApp.jsx'));
+const BackofficeApp = lazy(() => import('./BackofficeApp.jsx'));
 
 function withSuspense(element) {
   return <Suspense fallback={<Spinner label="Carregando..." />}>{element}</Suspense>;
@@ -19,6 +20,12 @@ export const router = createBrowserRouter([
     // Retaguarda do restaurante autenticado.
     path: '/admin/*',
     element: withSuspense(<AdminApp />),
+    errorElement: <RouteErrorPage />,
+  },
+  {
+    // Backoffice da plataforma (DEC-006): operadores, não restaurantes.
+    path: '/backoffice/*',
+    element: withSuspense(<BackofficeApp />),
     errorElement: <RouteErrorPage />,
   },
   {

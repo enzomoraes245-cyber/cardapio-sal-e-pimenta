@@ -4,13 +4,13 @@ import { Button } from '../../../components/ui/Button.jsx';
 import { FormField, INPUT_CLASS } from '../../../components/ui/FormField.jsx';
 import { ImageInput } from '../../../components/ui/ImageInput.jsx';
 import { apiValidationErrors, validateForm } from '../../../utils/validate-form.js';
-import { formatPriceInput } from '../utils/parse-price.js';
+import { formatMoneyInput } from '../../../utils/money-input.js';
 import { productSchema } from '../validators/product.schema.js';
 
 function initialValues(product) {
   return {
     name: product?.name ?? '',
-    price: formatPriceInput(product?.price),
+    price: formatMoneyInput(product?.price),
     categoryId: product?.category.id ?? '',
     shortDescription: product?.shortDescription ?? '',
     detailedDescription: product?.detailedDescription ?? '',
