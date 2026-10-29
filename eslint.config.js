@@ -3,7 +3,7 @@ import prettier from 'eslint-config-prettier';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
-const NODE_FILES = ['*.js', 'backend/**/*.js', 'frontend/*.js'];
+const NODE_FILES = ['*.js', 'backend/**/*.js', 'frontend/*.js', 'scripts/**/*.js'];
 const FRONTEND_FILES = ['frontend/src/**/*.{js,jsx}', 'frontend/tests/**/*.{js,jsx}'];
 
 export default [

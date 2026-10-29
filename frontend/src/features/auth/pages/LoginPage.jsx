@@ -6,16 +6,25 @@ import { validateForm } from '../../../utils/validate-form.js';
 import { useSession } from '../hooks/useSession.js';
 import { loginSchema } from '../validators/login.schema.js';
 
+/* global __DEV_LOGINS__ */
+// Contas de teste do seed, definidas pelo vite.config.js apenas em `vite dev` (vazio no build).
+const DEV_LOGINS = typeof __DEV_LOGINS__ === 'undefined' ? [] : __DEV_LOGINS__;
+
 /** Tela de login reutilizada pela retaguarda (/admin) e pelo backoffice (/backoffice). */
 export function LoginPage({
   title = 'Retaguarda',
   description = 'Entre para gerenciar o cardápio do seu restaurante.',
   homePath = '/admin',
+  devArea = 'admin',
 }) {
   const { status, login } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
-  const [values, setValues] = useState({ email: '', password: '' });
+  const devLogins = DEV_LOGINS.filter((account) => account.area === devArea);
+  const [values, setValues] = useState(() => ({
+    email: devLogins[0]?.email ?? '',
+    password: devLogins[0]?.password ?? '',
+  }));
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -60,6 +69,25 @@ export function LoginPage({
           <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
             {formError}
           </p>
+        )}
+
+        {devLogins.length > 0 && (
+          <FormField label="Usuário de teste">
+            <select
+              value={values.email}
+              onChange={(event) => {
+                const account = devLogins.find((item) => item.email === event.target.value);
+                if (account) setValues({ email: account.email, password: account.password });
+              }}
+              className={INPUT_CLASS}
+            >
+              {devLogins.map((account) => (
+                <option key={account.email} value={account.email}>
+                  {account.label}
+                </option>
+              ))}
+            </select>
+          </FormField>
         )}
 
         <FormField label="E-mail" error={errors.email}>

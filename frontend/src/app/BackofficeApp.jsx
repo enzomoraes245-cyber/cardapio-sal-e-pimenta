@@ -25,6 +25,7 @@ export default function BackofficeApp() {
               title="Backoffice da plataforma"
               description="Acesso restrito aos operadores da plataforma."
               homePath="/backoffice"
+              devArea="platform"
             />
           }
         />
