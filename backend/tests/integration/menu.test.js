@@ -35,6 +35,7 @@ describe('GET /api/v1/public/restaurants/:slug/menu', () => {
       primaryColor: '#123456',
       secondaryColor: null,
     });
+    expect(response.body.data.features).toEqual({ realtime: true, productModal: true });
     expect(categories).toHaveLength(1);
     expect(categories[0].products).toEqual([
       {

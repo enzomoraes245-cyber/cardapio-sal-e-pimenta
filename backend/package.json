@@ -14,6 +14,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "prisma:generate": "prisma generate",
+    "platform:create-admin": "node scripts/create-platform-admin.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {

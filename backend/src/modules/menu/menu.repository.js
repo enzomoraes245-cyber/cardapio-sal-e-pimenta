@@ -19,6 +19,8 @@ export function findPublishedMenuBySlug(slug) {
     select: {
       slug: true,
       name: true,
+      status: true,
+      features: { select: { feature: true, enabled: true } },
       customization: {
         select: { logoKey: true, primaryColor: true, secondaryColor: true },
       },

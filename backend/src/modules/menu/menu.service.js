@@ -1,30 +1,47 @@
 import { buildPublicFileUrl } from '../../config/storage.js';
 import { subscribeToMenuUpdates } from '../../shared/events/menu-events.js';
-import { NotFoundError } from '../../shared/errors/app-error.js';
+import {
+  ForbiddenError,
+  NotFoundError,
+  RestaurantSuspendedError,
+} from '../../shared/errors/app-error.js';
+import { getRestaurantFeatures, toFeatureFlags } from '../restaurants/restaurant-features.js';
 import { findRestaurantIdBySlug } from '../restaurants/restaurant.repository.js';
 import * as menuRepository from './menu.repository.js';
 
 const RESTAURANT_NOT_FOUND_MESSAGE = 'Restaurante não encontrado.';
 
-/** Retorna o cardápio público (somente dados publicáveis) do restaurante. */
+/**
+ * Retorna o cardápio público (somente dados publicáveis) do restaurante.
+ * Restaurante suspenso pelo backoffice responde 403 RESTAURANT_SUSPENDED (DEC-006).
+ */
 export async function getPublicMenu(slug) {
   const restaurant = await menuRepository.findPublishedMenuBySlug(slug);
   if (!restaurant) throw new NotFoundError(RESTAURANT_NOT_FOUND_MESSAGE);
+  if (restaurant.status === 'SUSPENDED') throw new RestaurantSuspendedError();
   return toPublicMenu(restaurant);
 }
 
 /**
  * Inscreve um ouvinte nas atualizações do cardápio de um restaurante.
- * Lança NotFoundError antes de qualquer inscrição se o slug não existir.
+ * Restaurantes suspensos continuam aceitando a conexão (o evento não carrega dados), para que o
+ * cardápio aberto volte sozinho quando o restaurante for reativado.
  */
 export async function subscribeToPublicMenu(slug, listener) {
   const restaurant = await findRestaurantIdBySlug(slug);
   if (!restaurant) throw new NotFoundError(RESTAURANT_NOT_FOUND_MESSAGE);
+
+  const features = await getRestaurantFeatures(restaurant.id);
+  if (!features.realtime) {
+    throw new ForbiddenError('Atualização automática não liberada.', 'FEATURE_DISABLED');
+  }
   return subscribeToMenuUpdates(restaurant.id, listener);
 }
 
 function toPublicMenu(restaurant) {
-  const { customization } = restaurant;
+  const features = toFeatureFlags(restaurant.features);
+  // Sem o módulo de personalização, o cardápio usa a identidade visual padrão.
+  const customization = features.customization ? restaurant.customization : null;
 
   return {
     restaurant: {
@@ -34,6 +51,7 @@ function toPublicMenu(restaurant) {
       primaryColor: customization?.primaryColor ?? null,
       secondaryColor: customization?.secondaryColor ?? null,
     },
+    features: { realtime: features.realtime, productModal: features.productModal },
     // Categoria sem produtos publicáveis não aparece no cardápio público.
     categories: restaurant.categories
       .filter((category) => category.products.length > 0)

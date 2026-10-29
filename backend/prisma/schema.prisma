@@ -12,19 +12,122 @@ datasource db {
 
 /// Estabelecimento (tenant). Todo dado de negócio pertence a exatamente um restaurante.
 model Restaurant {
-  id        String   @id @default(uuid()) @db.Uuid
+  id               String           @id @default(uuid()) @db.Uuid
   /// Identificador público e estável usado na URL do cardápio e no QR Code.
-  slug      String   @unique @db.VarChar(80)
-  name      String   @db.VarChar(120)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  slug             String           @unique @db.VarChar(80)
+  name             String           @db.VarChar(120)
+  /// Suspenso (DEC-006): retaguarda e cardápio público bloqueados; slug e QR Code preservados.
+  status           RestaurantStatus @default(ACTIVE)
+  suspendedAt      DateTime?        @map("suspended_at") @db.Timestamptz(3)
+  suspensionReason String?          @map("suspension_reason") @db.VarChar(300)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   adminUsers    AdminUser[]
   categories    Category[]
   products      Product[]
   customization RestaurantCustomization?
+  features      RestaurantFeature[]
+  subscription  Subscription?
+  invoices      Invoice[]
 
+  @@index([status])
   @@map("restaurants")
+}
+
+enum RestaurantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+/// Módulos liberáveis por restaurante (DEC-006).
+enum FeatureKey {
+  CUSTOMIZATION
+  QRCODE
+  REALTIME
+  PRODUCT_MODAL
+}
+
+/// Ausência de linha = módulo liberado. O backoffice grava todas as chaves ao alterar.
+model RestaurantFeature {
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  feature      FeatureKey
+  enabled      Boolean
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([restaurantId, feature])
+  @@map("restaurant_features")
+}
+
+/// Assinatura mensal do restaurante (cobrança manual, sem gateway).
+model Subscription {
+  restaurantId  String   @id @map("restaurant_id") @db.Uuid
+  monthlyAmount Decimal  @map("monthly_amount") @db.Decimal(10, 2)
+  /// Dia de vencimento das faturas (1 a 28, válido em todos os meses).
+  dueDay        Int      @map("due_day")
+  startedAt     DateTime @map("started_at") @db.Date
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+enum InvoiceStatus {
+  OPEN
+  PAID
+  CANCELED
+}
+
+/// Fatura mensal. "Vencida" = OPEN com due_date no passado (calculado, não gravado).
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  restaurantId   String        @map("restaurant_id") @db.Uuid
+  /// Primeiro dia do mês de referência.
+  referenceMonth DateTime      @map("reference_month") @db.Date
+  amount         Decimal       @db.Decimal(10, 2)
+  dueDate        DateTime      @map("due_date") @db.Date
+  status         InvoiceStatus @default(OPEN)
+  paidAt         DateTime?     @map("paid_at") @db.Timestamptz(3)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, referenceMonth])
+  @@index([status, dueDate])
+  @@map("invoices")
+}
+
+/// Operador do backoffice da plataforma. Não pertence a nenhum restaurante.
+model PlatformAdmin {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(120)
+  email        String   @unique @db.VarChar(254)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions PlatformSession[]
+
+  @@map("platform_admins")
+}
+
+model PlatformSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  platformAdminId String   @map("platform_admin_id") @db.Uuid
+  tokenHash       String   @unique @map("token_hash") @db.Char(64)
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  platformAdmin PlatformAdmin @relation(fields: [platformAdminId], references: [id], onDelete: Cascade)
+
+  @@index([platformAdminId])
+  @@index([expiresAt])
+  @@map("platform_sessions")
 }
 
 /// Usuário da retaguarda. Pertence a um único restaurante.
@@ -79,9 +182,9 @@ model Category {
 }
 
 model Product {
-  id           String   @id @default(uuid()) @db.Uuid
-  restaurantId String   @map("restaurant_id") @db.Uuid
-  categoryId   String   @map("category_id") @db.Uuid
+  id                  String   @id @default(uuid()) @db.Uuid
+  restaurantId        String   @map("restaurant_id") @db.Uuid
+  categoryId          String   @map("category_id") @db.Uuid
   name                String   @db.VarChar(120)
   /// Exibida na listagem do cardápio.
   shortDescription    String?  @map("short_description") @db.VarChar(300)

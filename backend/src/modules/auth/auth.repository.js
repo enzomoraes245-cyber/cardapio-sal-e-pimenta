@@ -6,7 +6,9 @@ export function findSessionByTokenHash(tokenHash) {
     select: {
       id: true,
       expiresAt: true,
-      adminUser: { select: { id: true, restaurantId: true } },
+      adminUser: {
+        select: { id: true, restaurantId: true, restaurant: { select: { status: true } } },
+      },
     },
   });
 }
@@ -14,7 +16,12 @@ export function findSessionByTokenHash(tokenHash) {
 export function findAdminByEmail(email) {
   return prisma.adminUser.findUnique({
     where: { email },
-    select: { id: true, restaurantId: true, passwordHash: true },
+    select: {
+      id: true,
+      restaurantId: true,
+      passwordHash: true,
+      restaurant: { select: { status: true } },
+    },
   });
 }
 

@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { prisma } from '../../../src/config/database.js';
-import { hashSessionToken } from '../../../src/modules/auth/auth.service.js';
+import { hashSessionToken } from '../../../src/shared/utils/session-token.js';
 import { hashPassword } from '../../../src/shared/utils/password.js';
 import { createRestaurantFixture } from './fixtures.js';
 
@@ -23,6 +23,26 @@ export async function createAdminFixture(restaurantId, { email, password = 'senh
       passwordHash: await hashPassword(password),
     },
   });
+}
+
+/** Operador do backoffice com sessão aberta. Retorna { platformAdmin, cookie }. */
+export async function createPlatformAdminFixture() {
+  const platformAdmin = await prisma.platformAdmin.create({
+    data: {
+      email: `operador-${randomUUID()}@teste.local`,
+      name: 'Operador de teste',
+      passwordHash: await hashPassword('senha-de-teste-123'),
+    },
+  });
+  const token = randomBytes(32).toString('base64url');
+  await prisma.platformSession.create({
+    data: {
+      platformAdminId: platformAdmin.id,
+      tokenHash: hashSessionToken(token),
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    },
+  });
+  return { platformAdmin, cookie: `cd_platform_session=${token}` };
 }
 
 /**

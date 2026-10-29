@@ -1,30 +1,37 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { env } from '../../config/env.js';
-import { UnauthorizedError } from '../../shared/errors/app-error.js';
+import { RestaurantSuspendedError, UnauthorizedError } from '../../shared/errors/app-error.js';
 import { hashPassword, verifyPassword } from '../../shared/utils/password.js';
+import {
+  MAX_TOKEN_LENGTH,
+  generateSessionToken,
+  hashSessionToken,
+  isPlausibleToken,
+} from '../../shared/utils/session-token.js';
+import { getRestaurantFeatures } from '../restaurants/restaurant-features.js';
 import * as authRepository from './auth.repository.js';
 
-const MIN_TOKEN_LENGTH = 32;
-const MAX_TOKEN_LENGTH = 256;
-const TOKEN_BYTES = 32;
 const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
+const SUSPENDED_MESSAGE =
+  'O acesso deste restaurante está suspenso. Entre em contato com o suporte da plataforma.';
 
 // Hash de referência para comparar quando o e-mail não existe: o tempo de resposta não revela
 // quais e-mails estão cadastrados.
 let dummyHashPromise = null;
-function getDummyHash() {
+export function getDummyHash() {
   dummyHashPromise ??= hashPassword(randomBytes(16).toString('hex'));
   return dummyHashPromise;
 }
 
-/** O banco guarda somente o hash do token; um vazamento da tabela não expõe sessões válidas. */
-export function hashSessionToken(token) {
-  return createHash('sha256').update(token).digest('hex');
+export function invalidCredentialsError() {
+  const error = new UnauthorizedError(INVALID_CREDENTIALS_MESSAGE);
+  error.code = 'INVALID_CREDENTIALS';
+  return error;
 }
 
 /**
  * Valida as credenciais e abre uma sessão (RF-001, RF-002).
- * Retorna o token a ser enviado no cookie e a data de expiração.
+ * Restaurante suspenso é informado somente depois de validar a senha.
  */
 export async function login(email, password) {
   const admin = await authRepository.findAdminByEmail(email);
@@ -33,13 +40,11 @@ export async function login(email, password) {
     admin?.passwordHash ?? (await getDummyHash()),
   );
 
-  if (!admin || !passwordMatches) {
-    const error = new UnauthorizedError(INVALID_CREDENTIALS_MESSAGE);
-    error.code = 'INVALID_CREDENTIALS';
-    throw error;
-  }
+  if (!admin || !passwordMatches) throw invalidCredentialsError();
+  if (admin.restaurant.status === 'SUSPENDED')
+    throw new RestaurantSuspendedError(SUSPENDED_MESSAGE);
 
-  const token = randomBytes(TOKEN_BYTES).toString('base64url');
+  const token = generateSessionToken();
   const expiresAt = new Date(Date.now() + env.SESSION_TTL_HOURS * 60 * 60 * 1000);
   await authRepository.createSession({
     adminUserId: admin.id,
@@ -60,8 +65,7 @@ export async function logout(token) {
  * Retorna null para tokens malformados, inexistentes ou expirados (expirados são removidos).
  */
 export async function resolveSession(token) {
-  if (typeof token !== 'string') return null;
-  if (token.length < MIN_TOKEN_LENGTH || token.length > MAX_TOKEN_LENGTH) return null;
+  if (!isPlausibleToken(token)) return null;
 
   const session = await authRepository.findSessionByTokenHash(hashSessionToken(token));
   if (!session) return null;
@@ -74,13 +78,20 @@ export async function resolveSession(token) {
     sessionId: session.id,
     adminUserId: session.adminUser.id,
     restaurantId: session.adminUser.restaurantId,
+    restaurantStatus: session.adminUser.restaurant.status,
   };
 }
 
-/** Dados do administrador autenticado e do restaurante vinculado. */
+/** Bloqueia operações administrativas de restaurante suspenso (DEC-006). */
+export function assertRestaurantActive(session) {
+  if (session.restaurantStatus === 'SUSPENDED')
+    throw new RestaurantSuspendedError(SUSPENDED_MESSAGE);
+}
+
+/** Dados do administrador autenticado, do restaurante vinculado e dos módulos liberados. */
 export async function getCurrentAdmin(auth) {
   const profile = await authRepository.findAdminProfile(auth.adminUserId);
   if (!profile) throw new UnauthorizedError();
   const { restaurant, ...admin } = profile;
-  return { admin, restaurant };
+  return { admin, restaurant, features: await getRestaurantFeatures(restaurant.id) };
 }

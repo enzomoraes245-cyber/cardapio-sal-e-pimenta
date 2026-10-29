@@ -157,9 +157,48 @@ async function seedAdminUser(restaurantId) {
   console.log(`Usuário admin ${email} criado/atualizado.`);
 }
 
+/** Assinatura de demonstração (DEC-006): R$ 99,90 com vencimento no dia 10. */
+async function seedSubscription(restaurantId) {
+  const today = new Date();
+  await prisma.subscription.upsert({
+    where: { restaurantId },
+    update: {},
+    create: {
+      restaurantId,
+      monthlyAmount: '99.90',
+      dueDay: 10,
+      startedAt: new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)),
+    },
+  });
+}
+
+/** Operador do backoffice de demonstração, criado somente se as variáveis estiverem definidas. */
+async function seedPlatformAdmin() {
+  const email = process.env.SEED_PLATFORM_ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.SEED_PLATFORM_ADMIN_PASSWORD ?? '';
+  if (!email || !password) {
+    console.log('SEED_PLATFORM_ADMIN_EMAIL/PASSWORD não definidos: operador não criado.');
+    return;
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(
+      `SEED_PLATFORM_ADMIN_PASSWORD deve ter ao menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+    );
+  }
+  const passwordHash = await hashPassword(password);
+  await prisma.platformAdmin.upsert({
+    where: { email },
+    update: { passwordHash },
+    create: { email, name: 'Operador Demo', passwordHash },
+  });
+  console.log(`Operador do backoffice ${email} criado/atualizado.`);
+}
+
 try {
   const restaurant = await seedDemoRestaurant();
   await seedAdminUser(restaurant.id);
+  await seedSubscription(restaurant.id);
+  await seedPlatformAdmin();
   console.log(`Seed concluído. Cardápio público: /cardapio/${restaurant.slug}`);
 } catch (error) {
   console.error('Falha no seed:', error);

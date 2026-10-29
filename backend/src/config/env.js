@@ -23,6 +23,8 @@ const envSchema = z.object({
     ),
   SESSION_COOKIE_NAME: z.string().min(1).default('cd_session'),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(12),
+  // Sessão dos operadores do backoffice da plataforma (cookie separado da retaguarda).
+  PLATFORM_SESSION_COOKIE_NAME: z.string().min(1).default('cd_platform_session'),
   // Endereço público do frontend: base da URL do cardápio no QR Code e origem aceita em escritas.
   APP_PUBLIC_URL: z
     .url()

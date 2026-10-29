@@ -30,6 +30,19 @@ export class ForbiddenError extends AppError {
   }
 }
 
+/** Restaurante suspenso pelo backoffice (DEC-006). */
+export class RestaurantSuspendedError extends ForbiddenError {
+  constructor(message = 'Este restaurante está temporariamente indisponível.') {
+    super(message, 'RESTAURANT_SUSPENDED');
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message, code = 'CONFLICT', details) {
+    super(message, { statusCode: 409, code, details });
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(message = 'Recurso não encontrado.') {
     super(message, { statusCode: 404, code: 'NOT_FOUND' });
