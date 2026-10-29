@@ -17,6 +17,11 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  /* Com um modal aberto, a página de fundo não rola e mantém a posição (CA-024). */
+  html:has(dialog[open]) {
+    overflow: hidden;
+  }
+
   body {
     @apply bg-stone-50 text-stone-900 antialiased;
   }

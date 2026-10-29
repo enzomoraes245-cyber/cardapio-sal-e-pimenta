@@ -1,6 +1,7 @@
 import { ProductCard } from './ProductCard.jsx';
 
-export function ProductList({ categories }) {
+/** Listagem por categoria. `onSelectProduct` (opcional) habilita a abertura dos detalhes. */
+export function ProductList({ categories, onSelectProduct }) {
   return (
     <div className="space-y-8">
       {categories.map((category) => (
@@ -14,7 +15,7 @@ export function ProductList({ categories }) {
           <ul className="space-y-3">
             {category.products.map((product) => (
               <li key={product.id}>
-                <ProductCard product={product} />
+                <ProductCard product={product} onSelect={onSelectProduct} />
               </li>
             ))}
           </ul>

@@ -5,20 +5,51 @@ import { StatusMessage } from '../../../components/ui/StatusMessage.jsx';
 import { getBrandStyle } from '../../customization/utils/brand-style.js';
 import { CategoryTabs } from '../components/CategoryTabs.jsx';
 import { MenuHeader } from '../components/MenuHeader.jsx';
+import { ProductDetailsModal } from '../components/ProductDetailsModal.jsx';
 import { ProductList } from '../components/ProductList.jsx';
 import { ProductSearch } from '../components/ProductSearch.jsx';
 import { useMenuEvents } from '../hooks/useMenuEvents.js';
 import { usePublicMenu } from '../hooks/usePublicMenu.js';
 import { filterMenuCategories } from '../utils/filter-menu.js';
 
+/** Mensagem exibida quando o cardápio não pode ser carregado. */
+function errorMessage(error) {
+  if (error.code === 'RESTAURANT_SUSPENDED') {
+    return {
+      title: 'Cardápio temporariamente indisponível',
+      description: 'Tente novamente mais tarde.',
+      retry: true,
+    };
+  }
+  if (error.status === 404 || error.status === 400) {
+    return {
+      title: 'Cardápio não encontrado',
+      description: 'Confira o QR Code ou o endereço acessado.',
+    };
+  }
+  return {
+    title: 'Não foi possível carregar o cardápio',
+    description: 'Verifique sua conexão e tente novamente.',
+    retry: true,
+  };
+}
+
 export function PublicMenuPage() {
   const { slug } = useParams();
   const { status, menu, error, reload } = usePublicMenu(slug);
-  useMenuEvents(slug, reload, { enabled: status === 'success' });
+  // Módulos ausentes na resposta são tratados como liberados.
+  const realtimeEnabled = menu?.features?.realtime !== false;
+  const modalEnabled = menu?.features?.productModal !== false;
+  // Mantém a conexão também quando o restaurante foi suspenso: a reativação chega pelo mesmo canal.
+  useMenuEvents(slug, reload, {
+    enabled: (status === 'success' && realtimeEnabled) || error?.code === 'RESTAURANT_SUSPENDED',
+  });
 
-  // Busca e categoria ficam fora dos dados do cardápio e sobrevivem às atualizações em tempo real.
+  // Busca, categoria e produto aberto ficam fora dos dados do cardápio e sobrevivem às
+  // atualizações em tempo real.
   const [search, setSearch] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [openProductId, setOpenProductId] = useState(null);
 
   const restaurantName = menu?.restaurant.name;
   useEffect(() => {
@@ -28,22 +59,18 @@ export function PublicMenuPage() {
   if (status === 'loading') return <Spinner label="Carregando cardápio..." />;
 
   if (status === 'error') {
-    const notFound = error.status === 404 || error.status === 400;
+    const message = errorMessage(error);
     return (
       <StatusMessage
         tone="error"
-        title={notFound ? 'Cardápio não encontrado' : 'Não foi possível carregar o cardápio'}
-        description={
-          notFound
-            ? 'Confira o QR Code ou o endereço acessado.'
-            : 'Verifique sua conexão e tente novamente.'
-        }
-        action={notFound ? undefined : { label: 'Tentar novamente', onClick: reload }}
+        title={message.title}
+        description={message.description}
+        action={message.retry ? { label: 'Tentar novamente', onClick: reload } : undefined}
       />
     );
   }
 
-  const categories = menu.categories.filter((category) => category.products.length > 0);
+  const { categories } = menu;
   // Se a categoria selecionada deixar de existir após uma atualização, volta para "Todas".
   const activeCategoryId = categories.some((category) => category.id === selectedCategoryId)
     ? selectedCategoryId
@@ -52,6 +79,10 @@ export function PublicMenuPage() {
     search,
     categoryId: activeCategoryId,
   });
+  // Se o produto aberto ficar indisponível durante a consulta, o modal fecha sozinho.
+  const openProduct = modalEnabled
+    ? categories.flatMap((category) => category.products).find((p) => p.id === openProductId)
+    : undefined;
 
   return (
     <div style={getBrandStyle(menu.restaurant)} className="min-h-dvh bg-brand-soft">
@@ -81,8 +112,21 @@ export function PublicMenuPage() {
             description="Tente outro termo de busca ou outra categoria."
           />
         )}
-        {visibleCategories.length > 0 && <ProductList categories={visibleCategories} />}
+        {visibleCategories.length > 0 && (
+          <ProductList
+            categories={visibleCategories}
+            onSelectProduct={modalEnabled ? setOpenProductId : undefined}
+          />
+        )}
       </main>
+
+      {openProduct && (
+        <ProductDetailsModal
+          key={openProduct.id}
+          product={openProduct}
+          onClose={() => setOpenProductId(null)}
+        />
+      )}
     </div>
   );
 }

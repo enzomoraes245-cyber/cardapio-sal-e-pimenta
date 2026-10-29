@@ -28,8 +28,11 @@ export function usePublicMenu(slug) {
       if (!controller.signal.aborted) setState({ slug, status: 'success', menu, error: null });
     } catch (error) {
       if (controller.signal.aborted) return;
+      // Falha transitória (ex.: rede) mantém o cardápio exibido; suspensão ou restaurante
+      // inexistente substituem o cardápio pela mensagem correspondente.
+      const isDefinitive = error?.code === 'RESTAURANT_SUSPENDED' || error?.status === 404;
       setState((previous) =>
-        previous.slug === slug && previous.menu
+        previous.slug === slug && previous.menu && !isDefinitive
           ? { ...previous, error }
           : { slug, status: 'error', menu: null, error },
       );
