@@ -1,23 +1,26 @@
 import { useId } from 'react';
+import { SearchIcon } from './icons.jsx';
 
 export function ProductSearch({ value, onChange }) {
   const inputId = useId();
 
   return (
-    <div>
-      <label htmlFor={inputId} className="sr-only">
-        Buscar no cardápio
-      </label>
+    <label
+      htmlFor={inputId}
+      className="flex h-12 cursor-text items-center gap-2.5 rounded-[14px] bg-surface-muted px-4 text-ink-muted focus-within:ring-2 focus-within:ring-ink/15"
+    >
+      <SearchIcon />
+      <span className="sr-only">Buscar no cardápio</span>
       <input
         id={inputId}
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="Buscar no cardápio"
+        placeholder="Buscar prato ou bebida"
         autoComplete="off"
         // text-base (16px) evita o zoom automático do iOS ao focar o campo.
-        className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-base focus:border-brand focus:ring-2 focus:ring-brand/30 focus:outline-none"
+        className="min-w-0 flex-1 bg-transparent text-base text-ink placeholder:text-ink-muted focus:outline-none"
       />
-    </div>
+    </label>
   );
 }

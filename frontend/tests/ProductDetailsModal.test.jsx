@@ -56,6 +56,26 @@ function MenuHarness() {
 }
 
 describe('modal de detalhes do produto (MOD-07)', () => {
+  it('atualiza o total pela quantidade e envia o pedido ao adicionar', () => {
+    const added = [];
+    const product = CATEGORIES[0].products[0];
+    render(
+      <ProductDetailsModal
+        product={product}
+        onClose={() => {}}
+        onAdd={(item) => added.push(item)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aumentar quantidade' }));
+    fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'sem cebola' } });
+    const addButton = screen.getByRole('button', { name: /Adicionar/ });
+    expect(addButton.textContent).toMatch(/R\$\s136,00/);
+
+    fireEvent.click(addButton);
+    expect(added).toEqual([{ product, quantity: 2, notes: 'sem cebola' }]);
+  });
+
   it('abre sobre a listagem com os dados do produto selecionado (CA-022, CA-023)', () => {
     render(<MenuHarness />);
 
@@ -78,7 +98,7 @@ describe('modal de detalhes do produto (MOD-07)', () => {
     const card = screen.getByRole('button', { name: 'Ver detalhes de Filé à parmegiana' });
 
     for (const close of [
-      () => fireEvent.click(screen.getByRole('button', { name: 'Fechar' })),
+      () => fireEvent.click(screen.getByRole('button', { name: 'Voltar ao cardápio' })),
       () => fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true })),
       () => fireEvent.click(screen.getByRole('dialog')),
     ]) {
@@ -96,7 +116,7 @@ describe('modal de detalhes do produto (MOD-07)', () => {
   it('sem onSelectProduct, os cards não são clicáveis (módulo desligado)', () => {
     render(<ProductList categories={CATEGORIES} />);
 
-    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: /Ver detalhes|Adicionar/ })).toBeNull();
     expect(screen.getAllByRole('article')).toHaveLength(2);
   });
 });

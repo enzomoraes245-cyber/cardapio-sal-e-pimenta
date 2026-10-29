@@ -17,19 +17,20 @@ describe('CategoryTabs', () => {
     expect(screen.getByRole('button', { name: 'Bebidas' }).getAttribute('aria-pressed')).toBe(
       'true',
     );
-    expect(screen.getByRole('button', { name: 'Todas' }).getAttribute('aria-pressed')).toBe(
+    expect(screen.getByRole('button', { name: 'Entradas' }).getAttribute('aria-pressed')).toBe(
       'false',
     );
+    expect(screen.queryByRole('button', { name: 'Todas' })).toBeNull();
   });
 
-  it('notifica a seleção, usando null para "Todas"', () => {
+  it('notifica a categoria escolhida', () => {
     const onSelect = vi.fn();
     render(<CategoryTabs categories={CATEGORIES} selectedId={null} onSelect={onSelect} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Entradas' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Todas' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bebidas' }));
 
     expect(onSelect).toHaveBeenNthCalledWith(1, 'entradas');
-    expect(onSelect).toHaveBeenNthCalledWith(2, null);
+    expect(onSelect).toHaveBeenNthCalledWith(2, 'bebidas');
   });
 });

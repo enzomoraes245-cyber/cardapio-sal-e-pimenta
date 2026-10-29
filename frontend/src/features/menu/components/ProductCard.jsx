@@ -1,41 +1,83 @@
 import { formatPrice } from '../../../utils/format-currency.js';
+import { HeartIcon, PlusIcon } from './icons.jsx';
 
 /**
- * Produto na listagem (RF-025): foto, nome, descrição curta e preço.
- * Com `onSelect`, o card vira um botão que abre os detalhes (MOD-07).
+ * Produto na listagem (RF-025): foto, nome, descrição curta e preço, com favoritar e adicionar.
+ * Com `onSelect`, a foto e o texto abrem os detalhes (MOD-07) e aparece o botão "+".
  */
-export function ProductCard({ product, onSelect }) {
+export function ProductCard({ product, onSelect, isFavorite = false, onToggleFavorite }) {
   const content = (
     <>
-      <div className="min-w-0 flex-1">
-        <h3 className="font-medium text-stone-900">{product.name}</h3>
-        {product.shortDescription && (
-          <p className="mt-1 line-clamp-2 text-sm text-stone-600">{product.shortDescription}</p>
-        )}
-        <p className="mt-2 font-semibold text-brand-text">{formatPrice(product.price)}</p>
-      </div>
       <img
         src={product.imageUrl}
         alt={product.name}
         loading="lazy"
-        className="size-20 shrink-0 rounded-lg bg-stone-100 object-cover"
+        className="size-[104px] shrink-0 rounded-[14px] bg-surface-muted object-cover"
       />
+      <div className="flex min-w-0 flex-1 flex-col justify-between py-1">
+        <div className="flex flex-col gap-1">
+          <h3 className="font-display text-lg leading-tight font-semibold text-ink">
+            {product.name}
+          </h3>
+          {product.shortDescription && (
+            <p className="line-clamp-2 text-[13px] leading-snug text-ink-muted">
+              {product.shortDescription}
+            </p>
+          )}
+        </div>
+        <p className="mt-2 font-display text-lg font-bold text-ink">{formatPrice(product.price)}</p>
+      </div>
     </>
   );
 
-  const cardClass = 'flex w-full gap-3 rounded-xl border border-stone-200 bg-white p-3 shadow-sm';
-
-  if (!onSelect) return <article className={cardClass}>{content}</article>;
+  const bodyClass = 'flex min-w-0 flex-1 gap-3.5 text-left';
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(product.id)}
-      aria-haspopup="dialog"
-      aria-label={`Ver detalhes de ${product.name}`}
-      className={`${cardClass} text-left transition-colors hover:border-stone-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}
-    >
-      {content}
-    </button>
+    <article className="flex w-full gap-2 rounded-[20px] border border-line bg-white p-2.5 shadow-[0_6px_20px_rgba(17,17,17,0.06)]">
+      {onSelect ? (
+        <button
+          type="button"
+          onClick={() => onSelect(product.id)}
+          aria-haspopup="dialog"
+          aria-label={`Ver detalhes de ${product.name}`}
+          className={`${bodyClass} rounded-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink`}
+        >
+          {content}
+        </button>
+      ) : (
+        <div className={bodyClass}>{content}</div>
+      )}
+
+      {(onToggleFavorite || onSelect) && (
+        <div className="flex shrink-0 flex-col items-end justify-between">
+          {onToggleFavorite ? (
+            <button
+              type="button"
+              onClick={() => onToggleFavorite(product.id)}
+              aria-label={`Favoritar ${product.name}`}
+              aria-pressed={isFavorite}
+              className={`flex size-9 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-ink ${
+                isFavorite ? 'text-brand-text' : 'text-ink'
+              }`}
+            >
+              <HeartIcon filled={isFavorite} />
+            </button>
+          ) : (
+            <span />
+          )}
+          {onSelect && (
+            <button
+              type="button"
+              onClick={() => onSelect(product.id)}
+              aria-haspopup="dialog"
+              aria-label={`Adicionar ${product.name}`}
+              className="flex size-9 items-center justify-center rounded-xl bg-ink text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+            >
+              <PlusIcon />
+            </button>
+          )}
+        </div>
+      )}
+    </article>
   );
 }

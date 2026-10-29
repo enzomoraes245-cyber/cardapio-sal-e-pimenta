@@ -3,7 +3,9 @@ import { Button } from '../../../components/ui/Button.jsx';
 import { FormField, INPUT_CLASS } from '../../../components/ui/FormField.jsx';
 import { ImageInput } from '../../../components/ui/ImageInput.jsx';
 import { apiValidationErrors, validateForm } from '../../../utils/validate-form.js';
+import { CategoryTabs } from '../../menu/components/CategoryTabs.jsx';
 import { MenuHeader } from '../../menu/components/MenuHeader.jsx';
+import { ProductList } from '../../menu/components/ProductList.jsx';
 import { getBrandStyle } from '../utils/brand-style.js';
 import { customizationSchema } from '../validators/customization.schema.js';
 import { ColorField } from './ColorField.jsx';
@@ -11,6 +13,25 @@ import { ColorField } from './ColorField.jsx';
 // Cores sugeridas quando o restaurante ainda não personalizou.
 const DEFAULT_PRIMARY = '#9a3412';
 const DEFAULT_SECONDARY = '#fafaf9';
+
+// Conteúdo fictício da prévia do cardápio.
+const PREVIEW_CATEGORIES = [
+  { id: 'previa-1', name: 'Pratos' },
+  { id: 'previa-2', name: 'Bebidas' },
+];
+// Foto neutra embutida (SVG), para a prévia não depender de arquivos do restaurante.
+const PREVIEW_IMAGE =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#e7e2da"/></svg>',
+  );
+const PREVIEW_PRODUCT = {
+  id: 'previa-produto',
+  name: 'Produto de exemplo',
+  shortDescription: 'Descrição curta do prato.',
+  price: '24.90',
+  imageUrl: PREVIEW_IMAGE,
+};
 
 /** Nome, cores e logotipo, com prévia do cabeçalho do cardápio. */
 export function CustomizationForm({ customization, onSubmit }) {
@@ -115,18 +136,26 @@ export function CustomizationForm({ customization, onSubmit }) {
 
       <div className="space-y-2">
         <p className="text-sm font-medium text-slate-800">Prévia</p>
+        {/* Mesmos componentes do cardápio público, sem interação (inert). */}
         <div
           style={getBrandStyle(preview)}
-          className="overflow-hidden rounded-xl border border-slate-200 bg-brand-soft"
+          className="overflow-hidden rounded-xl border border-slate-200 bg-brand-soft font-menu text-ink"
           aria-hidden="true"
+          inert
         >
           <MenuHeader restaurant={preview} />
-          <div className="space-y-2 p-4">
-            <p className="font-semibold text-brand-soft-contrast">Categoria</p>
-            <div className="rounded-lg bg-white p-3 shadow-sm">
-              <p className="font-medium text-stone-900">Produto de exemplo</p>
-              <p className="font-semibold text-brand-text">R$ 24,90</p>
-            </div>
+          <div className="space-y-4 px-5 pt-3 pb-5">
+            <CategoryTabs
+              categories={PREVIEW_CATEGORIES}
+              selectedId={PREVIEW_CATEGORIES[0].id}
+              onSelect={() => {}}
+            />
+            <ProductList
+              categories={[{ ...PREVIEW_CATEGORIES[0], products: [PREVIEW_PRODUCT] }]}
+              onSelectProduct={() => {}}
+              favorites={new Set()}
+              onToggleFavorite={() => {}}
+            />
           </div>
         </div>
         <p className="text-xs text-slate-500">

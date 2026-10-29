@@ -9,6 +9,7 @@ import { ProductDetailsModal } from '../components/ProductDetailsModal.jsx';
 import { ProductList } from '../components/ProductList.jsx';
 import { ProductSearch } from '../components/ProductSearch.jsx';
 import { useMenuEvents } from '../hooks/useMenuEvents.js';
+import { useFavorites } from '../hooks/useFavorites.js';
 import { usePublicMenu } from '../hooks/usePublicMenu.js';
 import { filterMenuCategories } from '../utils/filter-menu.js';
 
@@ -49,73 +50,136 @@ export function PublicMenuPage() {
   // atualizações em tempo real.
   const [search, setSearch] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [showingFavorites, setShowingFavorites] = useState(false);
   const [openProductId, setOpenProductId] = useState(null);
+  const [toast, setToast] = useState(null);
+  const { favorites, toggleFavorite } = useFavorites(slug);
 
   const restaurantName = menu?.restaurant.name;
   useEffect(() => {
     if (restaurantName) document.title = `${restaurantName} · Cardápio`;
   }, [restaurantName]);
 
-  if (status === 'loading') return <Spinner label="Carregando cardápio..." />;
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  // Carregamento e erro usam a mesma tipografia e cores neutras do cardápio.
+  if (status === 'loading') {
+    return (
+      <div className="min-h-dvh font-menu text-ink-muted">
+        <Spinner label="Carregando cardápio..." />
+      </div>
+    );
+  }
 
   if (status === 'error') {
     const message = errorMessage(error);
     return (
-      <StatusMessage
-        tone="error"
-        title={message.title}
-        description={message.description}
-        action={message.retry ? { label: 'Tentar novamente', onClick: reload } : undefined}
-      />
+      <div className="min-h-dvh pt-10 font-menu text-ink">
+        <StatusMessage
+          tone="error"
+          title={message.title}
+          description={message.description}
+          action={message.retry ? { label: 'Tentar novamente', onClick: reload } : undefined}
+        />
+      </div>
     );
   }
 
   const { categories } = menu;
-  // Se a categoria selecionada deixar de existir após uma atualização, volta para "Todas".
+  // Uma categoria por vez; se a escolhida deixar de existir após uma atualização, volta à primeira.
   const activeCategoryId = categories.some((category) => category.id === selectedCategoryId)
     ? selectedCategoryId
-    : null;
-  const visibleCategories = filterMenuCategories(categories, {
-    search,
-    categoryId: activeCategoryId,
-  });
+    : (categories[0]?.id ?? null);
+  const searching = search.trim().length > 0;
+
+  let sections;
+  if (searching) {
+    sections = filterMenuCategories(categories, { search });
+  } else if (showingFavorites) {
+    const favoriteProducts = categories
+      .flatMap((category) => category.products)
+      .filter((product) => favorites.has(product.id));
+    sections = favoriteProducts.length
+      ? [{ id: 'favoritos', name: 'Favoritos', products: favoriteProducts }]
+      : [];
+  } else {
+    sections = filterMenuCategories(categories, { categoryId: activeCategoryId });
+  }
+
+  function selectCategory(categoryId) {
+    setSelectedCategoryId(categoryId);
+    setShowingFavorites(false);
+    setSearch('');
+    window.scrollTo({ top: 0 });
+  }
+
   // Se o produto aberto ficar indisponível durante a consulta, o modal fecha sozinho.
-  const openProduct = modalEnabled
-    ? categories.flatMap((category) => category.products).find((p) => p.id === openProductId)
+  const openCategory = modalEnabled
+    ? categories.find((category) => category.products.some((p) => p.id === openProductId))
     : undefined;
+  const openProduct = openCategory?.products.find((p) => p.id === openProductId);
+
+  let emptyMessage = null;
+  if (categories.length === 0) {
+    emptyMessage = {
+      title: 'Cardápio vazio',
+      description: 'Nenhum produto disponível no momento.',
+    };
+  } else if (sections.length === 0 && searching) {
+    emptyMessage = {
+      title: 'Nenhum produto encontrado',
+      description: 'Tente outro termo de busca ou outra categoria.',
+    };
+  } else if (sections.length === 0 && showingFavorites) {
+    emptyMessage = {
+      title: 'Nenhum favorito ainda',
+      description: 'Toque no coração de um prato para guardá-lo aqui.',
+    };
+  }
 
   return (
-    <div style={getBrandStyle(menu.restaurant)} className="min-h-dvh bg-brand-soft">
-      <MenuHeader restaurant={menu.restaurant} />
-
-      <div className="sticky top-0 z-10 space-y-3 border-b border-stone-200 bg-brand-soft/95 px-4 py-3 backdrop-blur">
-        <ProductSearch value={search} onChange={setSearch} />
-        {categories.length > 1 && (
-          <CategoryTabs
-            categories={categories}
-            selectedId={activeCategoryId}
-            onSelect={setSelectedCategoryId}
-          />
-        )}
+    <div
+      style={getBrandStyle(menu.restaurant)}
+      className="min-h-dvh bg-brand-soft font-menu text-ink"
+    >
+      <div className="sticky top-0 z-20 bg-brand-soft/95 pb-1 backdrop-blur">
+        <MenuHeader
+          restaurant={menu.restaurant}
+          categories={categories}
+          onSelectCategory={selectCategory}
+          showingFavorites={showingFavorites}
+          onToggleFavorites={() => {
+            setShowingFavorites((value) => !value);
+            setSearch('');
+            window.scrollTo({ top: 0 });
+          }}
+        />
+        <div className="space-y-4 px-5 pt-3 pb-1">
+          <ProductSearch value={search} onChange={setSearch} />
+          {categories.length > 0 && (
+            <CategoryTabs
+              categories={categories}
+              selectedId={searching || showingFavorites ? null : activeCategoryId}
+              onSelect={selectCategory}
+            />
+          )}
+        </div>
       </div>
 
-      <main className="px-4 py-6">
-        {categories.length === 0 && (
-          <StatusMessage
-            title="Cardápio vazio"
-            description="Nenhum produto disponível no momento."
-          />
+      <main className="px-5 pt-5 pb-8">
+        {emptyMessage && (
+          <StatusMessage title={emptyMessage.title} description={emptyMessage.description} />
         )}
-        {categories.length > 0 && visibleCategories.length === 0 && (
-          <StatusMessage
-            title="Nenhum produto encontrado"
-            description="Tente outro termo de busca ou outra categoria."
-          />
-        )}
-        {visibleCategories.length > 0 && (
+        {sections.length > 0 && (
           <ProductList
-            categories={visibleCategories}
+            categories={sections}
             onSelectProduct={modalEnabled ? setOpenProductId : undefined}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
           />
         )}
       </main>
@@ -124,8 +188,21 @@ export function PublicMenuPage() {
         <ProductDetailsModal
           key={openProduct.id}
           product={openProduct}
+          categoryName={openCategory.name}
+          isFavorite={favorites.has(openProduct.id)}
+          onToggleFavorite={toggleFavorite}
+          onAdd={({ product, quantity }) => setToast(`${quantity}× ${product.name} adicionado`)}
           onClose={() => setOpenProductId(null)}
         />
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          className="fixed inset-x-5 bottom-6 z-30 mx-auto max-w-sm rounded-2xl bg-ink px-4 py-3 text-center text-sm font-medium text-white shadow-lg"
+        >
+          {toast}
+        </div>
       )}
     </div>
   );

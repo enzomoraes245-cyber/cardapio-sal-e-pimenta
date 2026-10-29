@@ -10,6 +10,15 @@
   --color-brand-text: #9a3412;
   --color-brand-soft: #fafaf9;
   --color-brand-soft-contrast: #1c1917;
+
+  /* Tipografia e tons neutros do cardápio público. */
+  --font-menu: Inter, system-ui, sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --color-ink: #111111;
+  --color-ink-muted: #6b6b6b;
+  --color-surface-muted: #f5f4f2;
+  --color-line: #efedea;
+  --color-line-strong: #e2e0dc;
 }
 
 @layer base {
