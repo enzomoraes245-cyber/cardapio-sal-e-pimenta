@@ -1,6 +1,9 @@
 /**
- * Seed de desenvolvimento: cria (ou recria) o restaurante de demonstração "demo".
- * Afeta somente os dados desse restaurante; os demais não são alterados.
+ * Seed de desenvolvimento: cria (ou recria) os restaurantes de demonstração de seed-data.js,
+ * com usuários da retaguarda, cardápio, identidade visual e assinatura.
+ * Afeta somente os dados desses restaurantes; os demais não são alterados.
+ *
+ * Todos os usuários da retaguarda usam a senha SEED_ADMIN_PASSWORD.
  */
 import { prisma } from '../src/config/database.js';
 import {
@@ -9,86 +12,23 @@ import {
   saveFile,
 } from '../src/shared/utils/file-storage.js';
 import { hashPassword } from '../src/shared/utils/password.js';
+import { SEED_RESTAURANTS } from './seed-data.js';
 import { createSolidPng } from './seed-images.js';
 
-const DEMO_RESTAURANT = { slug: 'demo', name: 'Restaurante Demonstração' };
-const DEMO_CUSTOMIZATION = { primaryColor: '#9a3412', secondaryColor: '#fef3c7' };
 const MIN_PASSWORD_LENGTH = 8;
-
 const PRODUCT_IMAGE_SIZE = 480;
 
-// cor: tom da foto ilustrativa gerada pelo seed.
-const DEMO_MENU = [
-  {
-    name: 'Entradas',
-    products: [
-      {
-        name: 'Bruschetta de tomate',
-        shortDescription: 'Pão italiano, tomate, manjericão e azeite.',
-        detailedDescription:
-          'Fatias de pão italiano tostadas, cobertas com tomate fresco, manjericão, alho e azeite extravirgem. Porção com 4 unidades.',
-        price: '24.90',
-        color: [190, 60, 45],
-      },
-      {
-        name: 'Pastéis de queijo',
-        shortDescription: 'Porção com 6 unidades.',
-        price: '29.90',
-        color: [222, 170, 70],
-      },
-    ],
-  },
-  {
-    name: 'Pratos principais',
-    products: [
-      {
-        name: 'Filé à parmegiana',
-        shortDescription: 'Acompanha arroz e batata frita.',
-        detailedDescription:
-          'Filé mignon empanado, coberto com molho de tomate e muçarela gratinada. Serve 1 pessoa.',
-        price: '68.00',
-        color: [160, 82, 45],
-      },
-      {
-        name: 'Risoto de cogumelos',
-        shortDescription: 'Arbóreo, mix de cogumelos e parmesão.',
-        price: '58.00',
-        color: [150, 130, 100],
-        // Indisponível: não deve aparecer no cardápio público.
-        isAvailable: false,
-      },
-    ],
-  },
-  {
-    name: 'Bebidas',
-    products: [
-      {
-        name: 'Suco natural de laranja',
-        shortDescription: '400 ml.',
-        price: '12.00',
-        color: [245, 150, 30],
-      },
-      {
-        name: 'Água mineral',
-        shortDescription: 'Com ou sem gás, 500 ml.',
-        price: '6.50',
-        color: [120, 180, 220],
-      },
-    ],
-  },
-];
-
-async function seedDemoRestaurant() {
+async function seedRestaurant({ slug, name, customization, menu }) {
   const restaurant = await prisma.restaurant.upsert({
-    where: { slug: DEMO_RESTAURANT.slug },
-    update: { name: DEMO_RESTAURANT.name },
-    create: DEMO_RESTAURANT,
+    where: { slug },
+    update: { name },
+    create: { slug, name },
   });
 
   // Fotos ilustrativas gravadas no armazenamento antes de recriar os produtos.
   await deleteRestaurantFolder(restaurant.id, 'products');
   const imageKeys = new Map();
-  for (const product of DEMO_MENU.flatMap((category) => category.products)) {
+  for (const product of menu.flatMap((category) => category.products)) {
     const key = buildRestaurantFileKey(restaurant.id, 'products', 'png');
     await saveFile(key, createSolidPng(PRODUCT_IMAGE_SIZE, PRODUCT_IMAGE_SIZE, product.color));
     imageKeys.set(product.name, key);
@@ -97,14 +37,14 @@ async function seedDemoRestaurant() {
   await prisma.$transaction(async (tx) => {
     await tx.restaurantCustomization.upsert({
       where: { restaurantId: restaurant.id },
-      update: DEMO_CUSTOMIZATION,
-      create: { restaurantId: restaurant.id, ...DEMO_CUSTOMIZATION },
+      update: customization,
+      create: { restaurantId: restaurant.id, ...customization },
     });
 
     await tx.product.deleteMany({ where: { restaurantId: restaurant.id } });
     await tx.category.deleteMany({ where: { restaurantId: restaurant.id } });
 
-    for (const [categoryPosition, categoryData] of DEMO_MENU.entries()) {
+    for (const [categoryPosition, categoryData] of menu.entries()) {
       const category = await tx.category.create({
         data: { restaurantId: restaurant.id, name: categoryData.name, position: categoryPosition },
       });
@@ -128,45 +68,48 @@ async function seedDemoRestaurant() {
   return restaurant;
 }
 
-async function seedAdminUser(restaurantId) {
-  const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
+/** Hash calculado uma vez: todos os usuários do seed compartilham a mesma senha. */
+async function getAdminPasswordHash() {
   const password = process.env.SEED_ADMIN_PASSWORD ?? '';
-
-  if (!email || !password) {
-    console.log('SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD não definidos: usuário admin não criado.');
-    return;
-  }
+  if (!password) return null;
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw new Error(`SEED_ADMIN_PASSWORD deve ter ao menos ${MIN_PASSWORD_LENGTH} caracteres.`);
   }
-
-  const existing = await prisma.adminUser.findUnique({
-    where: { email },
-    select: { restaurantId: true },
-  });
-  if (existing && existing.restaurantId !== restaurantId) {
-    throw new Error(`O e-mail ${email} já pertence a outro restaurante.`);
-  }
-
-  const passwordHash = await hashPassword(password);
-  await prisma.adminUser.upsert({
-    where: { email },
-    update: { passwordHash },
-    create: { restaurantId, email, name: 'Administrador Demo', passwordHash },
-  });
-  console.log(`Usuário admin ${email} criado/atualizado.`);
+  return hashPassword(password);
 }
 
-/** Assinatura de demonstração (DEC-006): R$ 99,90 com vencimento no dia 10. */
-async function seedSubscription(restaurantId) {
+async function seedAdminUsers(restaurantId, admins, passwordHash) {
+  for (const admin of admins) {
+    const email = (admin.email ?? process.env.SEED_ADMIN_EMAIL)?.trim().toLowerCase();
+    if (!email) continue;
+
+    const existing = await prisma.adminUser.findUnique({
+      where: { email },
+      select: { restaurantId: true },
+    });
+    if (existing && existing.restaurantId !== restaurantId) {
+      throw new Error(`O e-mail ${email} já pertence a outro restaurante.`);
+    }
+
+    await prisma.adminUser.upsert({
+      where: { email },
+      update: { passwordHash, name: admin.name },
+      create: { restaurantId, email, name: admin.name, passwordHash },
+    });
+    console.log(`  Usuário ${email} criado/atualizado.`);
+  }
+}
+
+/** Assinatura de demonstração (DEC-006), iniciada no primeiro dia do mês corrente. */
+async function seedSubscription(restaurantId, { monthlyAmount, dueDay }) {
   const today = new Date();
   await prisma.subscription.upsert({
     where: { restaurantId },
     update: {},
     create: {
       restaurantId,
-      monthlyAmount: '99.90',
-      dueDay: 10,
+      monthlyAmount,
+      dueDay,
       startedAt: new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)),
     },
   });
@@ -195,11 +138,23 @@ async function seedPlatformAdmin() {
 }
 
 try {
-  const restaurant = await seedDemoRestaurant();
-  await seedAdminUser(restaurant.id);
-  await seedSubscription(restaurant.id);
+  const passwordHash = await getAdminPasswordHash();
+  if (!passwordHash) {
+    console.log('SEED_ADMIN_PASSWORD não definido: usuários da retaguarda não criados.');
+  }
+
+  for (const data of SEED_RESTAURANTS) {
+    const restaurant = await seedRestaurant(data);
+    const productCount = data.menu.reduce((total, c) => total + c.products.length, 0);
+    console.log(
+      `${data.name}: ${data.menu.length} categorias, ${productCount} produtos — /cardapio/${restaurant.slug}`,
+    );
+    if (passwordHash) await seedAdminUsers(restaurant.id, data.admins, passwordHash);
+    await seedSubscription(restaurant.id, data.subscription);
+  }
+
   await seedPlatformAdmin();
-  console.log(`Seed concluído. Cardápio público: /cardapio/${restaurant.slug}`);
+  console.log('Seed concluído.');
 } catch (error) {
   console.error('Falha no seed:', error);
   process.exitCode = 1;

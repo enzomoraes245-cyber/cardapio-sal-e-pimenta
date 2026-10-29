@@ -128,7 +128,7 @@ Para usar um PostgreSQL já instalado, basta ajustar `DATABASE_URL` em `backend/
 ```bash
 npm install          # instala os dois workspaces e gera o Prisma Client
 npm run db:migrate   # aplica as migrations (prisma migrate dev)
-npm run db:seed      # opcional: restaurante "demo" com fotos, admin, assinatura e operador
+npm run db:seed      # opcional: 4 restaurantes de demonstração (prisma/seed-data.js) e operador
 ```
 
 Em produção, use `npm run db:deploy -w backend` (aplica migrations sem gerar novas).
