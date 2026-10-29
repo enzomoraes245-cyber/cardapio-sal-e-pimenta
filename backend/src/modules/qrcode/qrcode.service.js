@@ -21,5 +21,6 @@ export async function getPublicMenuInfo(restaurantId) {
 /** RF-033: PNG do QR Code apontando para a URL pública do restaurante. */
 export async function generateQrCodePng(restaurantId) {
   const { slug, url } = await getPublicMenuInfo(restaurantId);
-  return { slug, png: await QRCode.toBuffer(url, QR_CODE_OPTIONS) };
+  // A biblioteca altera o objeto de opções recebido: envia uma cópia.
+  return { slug, png: await QRCode.toBuffer(url, { ...QR_CODE_OPTIONS }) };
 }

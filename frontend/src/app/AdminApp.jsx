@@ -7,6 +7,7 @@ import { CategoriesPage } from '../features/categories/pages/CategoriesPage.jsx'
 import { CustomizationPage } from '../features/customization/pages/CustomizationPage.jsx';
 import { ProductFormPage } from '../features/products/pages/ProductFormPage.jsx';
 import { ProductsPage } from '../features/products/pages/ProductsPage.jsx';
+import { QrCodePage } from '../features/qrcode/pages/QrCodePage.jsx';
 import { AdminHomePage } from '../features/restaurants/pages/AdminHomePage.jsx';
 import { AdminLayout } from '../layouts/AdminLayout.jsx';
 
@@ -27,6 +28,7 @@ export default function AdminApp() {
             <Route path="produtos/novo" element={<ProductFormPage />} />
             <Route path="produtos/:id" element={<ProductFormPage />} />
             <Route path="personalizacao" element={<CustomizationPage />} />
+            <Route path="qrcode" element={<QrCodePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

@@ -9,6 +9,7 @@ import { categoryRoutes } from '../modules/categories/category.routes.js';
 import { customizationRoutes } from '../modules/customization/customization.routes.js';
 import { menuRoutes } from '../modules/menu/menu.routes.js';
 import { categoryProductRoutes, productRoutes } from '../modules/products/product.routes.js';
+import { qrcodeRoutes } from '../modules/qrcode/qrcode.routes.js';
 
 /** Roteador da API v1 (montado em /api/v1). */
 export const apiRouter = Router();
@@ -37,4 +38,5 @@ adminRouter.use(requireAdmin, requireTenant);
 adminRouter.use('/categories', categoryRoutes, categoryProductRoutes);
 adminRouter.use('/products', productRoutes, availabilityRoutes);
 adminRouter.use('/customization', customizationRoutes);
+adminRouter.use('/qrcode', qrcodeRoutes);
 apiRouter.use('/admin', adminRouter);
