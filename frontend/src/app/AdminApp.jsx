@@ -3,6 +3,7 @@ import { NotFoundPage } from '../components/shared/NotFoundPage.jsx';
 import { RequireAuth } from '../features/auth/components/RequireAuth.jsx';
 import { SessionProvider } from '../features/auth/components/SessionProvider.jsx';
 import { LoginPage } from '../features/auth/pages/LoginPage.jsx';
+import { CategoriesPage } from '../features/categories/pages/CategoriesPage.jsx';
 import { AdminHomePage } from '../features/restaurants/pages/AdminHomePage.jsx';
 import { AdminLayout } from '../layouts/AdminLayout.jsx';
 
@@ -18,6 +19,7 @@ export default function AdminApp() {
         <Route element={<RequireAuth />}>
           <Route element={<AdminLayout />}>
             <Route index element={<AdminHomePage />} />
+            <Route path="categorias" element={<CategoriesPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

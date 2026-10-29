@@ -34,18 +34,21 @@ function toPublicMenu(restaurant) {
       primaryColor: customization?.primaryColor ?? null,
       secondaryColor: customization?.secondaryColor ?? null,
     },
-    categories: restaurant.categories.map((category) => ({
-      id: category.id,
-      name: category.name,
-      products: category.products.map((product) => ({
-        id: product.id,
-        name: product.name,
-        shortDescription: product.shortDescription,
-        detailedDescription: product.detailedDescription,
-        // Decimal serializado como string para não perder precisão no JSON.
-        price: product.price.toFixed(2),
-        imageUrl: buildPublicFileUrl(product.imageKey),
+    // Categoria sem produtos publicáveis não aparece no cardápio público.
+    categories: restaurant.categories
+      .filter((category) => category.products.length > 0)
+      .map((category) => ({
+        id: category.id,
+        name: category.name,
+        products: category.products.map((product) => ({
+          id: product.id,
+          name: product.name,
+          shortDescription: product.shortDescription,
+          detailedDescription: product.detailedDescription,
+          // Decimal serializado como string para não perder precisão no JSON.
+          price: product.price.toFixed(2),
+          imageUrl: buildPublicFileUrl(product.imageKey),
+        })),
       })),
-    })),
   };
 }

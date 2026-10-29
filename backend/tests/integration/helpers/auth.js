@@ -1,7 +1,17 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { prisma } from '../../../src/config/database.js';
 import { hashSessionToken } from '../../../src/modules/auth/auth.service.js';
 import { hashPassword } from '../../../src/shared/utils/password.js';
+import { createRestaurantFixture } from './fixtures.js';
+
+/** Restaurante de teste com categoria, produtos, administrador e cookie de sessão. */
+export async function createTenantFixture(label) {
+  const fixture = await createRestaurantFixture(label);
+  const admin = await createAdminFixture(fixture.restaurant.id, {
+    email: `admin-${label}-${randomUUID()}@teste.local`,
+  });
+  return { ...fixture, admin, cookie: await createSessionCookie(admin.id) };
+}
 
 /** Cria um administrador para o restaurante informado. */
 export async function createAdminFixture(restaurantId, { email, password = 'senha-de-teste-123' }) {

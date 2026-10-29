@@ -4,6 +4,7 @@ import { requireAdmin } from '../middlewares/auth.middleware.js';
 import { requireSameOrigin } from '../middlewares/same-origin.middleware.js';
 import { requireTenant } from '../middlewares/tenant.middleware.js';
 import { authRoutes } from '../modules/auth/auth.routes.js';
+import { categoryRoutes } from '../modules/categories/category.routes.js';
 import { menuRoutes } from '../modules/menu/menu.routes.js';
 
 /** Roteador da API v1 (montado em /api/v1). */
@@ -30,4 +31,5 @@ apiRouter.use('/public', menuRoutes);
 // Rotas administrativas: toda requisição passa por sessão válida + contexto do restaurante.
 const adminRouter = Router();
 adminRouter.use(requireAdmin, requireTenant);
+adminRouter.use('/categories', categoryRoutes);
 apiRouter.use('/admin', adminRouter);
