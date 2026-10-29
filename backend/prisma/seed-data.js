@@ -73,13 +73,51 @@ export const SEED_RESTAURANTS = [
   {
     slug: 'sal-e-pimenta',
     name: 'Sal e Pimenta',
-    customization: { primaryColor: '#b91c1c', secondaryColor: '#fff7ed' },
+    customization: { primaryColor: '#b3261e', secondaryColor: '#ffffff' },
     subscription: { monthlyAmount: '129.90', dueDay: 5 },
     admins: [
       { email: 'admin@salepimenta.local', name: 'Administrador Sal e Pimenta' },
       { email: 'gerente@salepimenta.local', name: 'Gerente Sal e Pimenta' },
     ],
     menu: [
+      {
+        name: 'Especialidades da casa',
+        products: [
+          {
+            name: 'Prato feito da casa',
+            shortDescription:
+              'Lombo grelhado, linguiça, ovo, arroz, feijão tropeiro, couve e croquete.',
+            detailedDescription:
+              'Lombo grelhado, linguiça, ovo frito, arroz, feijão tropeiro, couve refogada e croquete.',
+            price: '34.90',
+            image: 'sal-e-pimenta/prato-feito.jpg',
+          },
+          {
+            name: 'Salada com frango grelhado',
+            shortDescription: 'Folhas verdes, tomate-cereja, azeitonas e peito de frango.',
+            price: '32.90',
+            image: 'sal-e-pimenta/salada-frango.jpg',
+          },
+          {
+            name: 'Hambúrguer no prato',
+            shortDescription: 'Com talharim na manteiga e abóbora assada.',
+            price: '38.90',
+            image: 'sal-e-pimenta/hamburguer-prato.jpg',
+          },
+          {
+            name: 'Marmita de calabresa',
+            shortDescription: 'Calabresa acebolada, arroz, feijão e batata frita.',
+            price: '29.90',
+            image: 'sal-e-pimenta/marmita-calabresa.jpg',
+          },
+          {
+            name: 'Bowl de frango com quinoa',
+            shortDescription: 'Frango grelhado, quinoa, feijão, batata-doce e salada.',
+            price: '36.90',
+            image: 'sal-e-pimenta/bowl-frango-quinoa.jpg',
+          },
+        ],
+      },
       {
         name: 'Entradas',
         products: [
@@ -89,70 +127,19 @@ export const SEED_RESTAURANTS = [
             detailedDescription:
               'Bolinhos de bacalhau desfiado com batata e salsinha, fritos na hora. Acompanha limão e molho de pimenta da casa.',
             price: '39.90',
-            color: [210, 160, 80],
+            color: [201, 154, 85],
           },
           {
             name: 'Caldinho de feijão',
             shortDescription: 'Com bacon crocante e cebolinha.',
             price: '14.90',
-            color: [90, 55, 35],
+            color: [92, 58, 36],
           },
           {
             name: 'Mandioca frita',
             shortDescription: 'Porção para 2 pessoas.',
             price: '27.00',
-            color: [235, 200, 120],
-          },
-        ],
-      },
-      {
-        name: 'Pratos executivos',
-        products: [
-          {
-            name: 'Executivo de frango grelhado',
-            shortDescription: 'Arroz, feijão, salada e fritas.',
-            price: '32.90',
-            color: [200, 150, 90],
-          },
-          {
-            name: 'Executivo de bife acebolado',
-            shortDescription: 'Arroz, feijão, farofa e salada.',
-            price: '36.90',
-            color: [130, 70, 40],
-          },
-          {
-            name: 'Executivo de peixe',
-            shortDescription: 'Tilápia grelhada, arroz, purê e legumes.',
-            price: '38.90',
-            color: [225, 215, 190],
-          },
-        ],
-      },
-      {
-        name: 'Especialidades da casa',
-        products: [
-          {
-            name: 'Feijoada completa',
-            shortDescription: 'Serve 2 pessoas. Sábados.',
-            detailedDescription:
-              'Feijão preto com carnes selecionadas, acompanhada de arroz, couve refogada, farofa, torresmo e laranja.',
-            price: '89.90',
-            color: [50, 35, 30],
-          },
-          {
-            name: 'Picanha na chapa',
-            shortDescription: '400 g, com arroz, vinagrete e mandioca.',
-            detailedDescription:
-              'Picanha fatiada na chapa com alho, servida com arroz branco, vinagrete, farofa e mandioca cozida. Serve 2 pessoas.',
-            price: '119.00',
-            color: [150, 50, 40],
-          },
-          {
-            name: 'Moqueca de camarão',
-            shortDescription: 'Com arroz e pirão.',
-            price: '98.00',
-            color: [220, 110, 40],
-            isAvailable: false,
+            color: [217, 183, 106],
           },
         ],
       },

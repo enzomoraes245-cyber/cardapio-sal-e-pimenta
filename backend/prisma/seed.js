@@ -5,6 +5,7 @@
  *
  * Todos os usuários da retaguarda usam a senha SEED_ADMIN_PASSWORD.
  */
+import { readFile } from 'node:fs/promises';
 import { prisma } from '../src/config/database.js';
 import {
   buildRestaurantFileKey,
@@ -17,6 +18,19 @@ import { createSolidPng } from './seed-images.js';
 
 const MIN_PASSWORD_LENGTH = 8;
 const PRODUCT_IMAGE_SIZE = 480;
+const SEED_ASSETS_DIR = new URL('./seed-assets/', import.meta.url);
+
+/** Foto do produto: arquivo em seed-assets/ (`image`) ou um PNG de cor sólida (`color`). */
+async function loadProductImage(product) {
+  if (product.image) {
+    const extension = product.image.split('.').pop().toLowerCase();
+    return { extension, data: await readFile(new URL(product.image, SEED_ASSETS_DIR)) };
+  }
+  return {
+    extension: 'png',
+    data: createSolidPng(PRODUCT_IMAGE_SIZE, PRODUCT_IMAGE_SIZE, product.color),
+  };
+}
 
 async function seedRestaurant({ slug, name, customization, menu }) {
   const restaurant = await prisma.restaurant.upsert({
@@ -29,8 +43,9 @@ async function seedRestaurant({ slug, name, customization, menu }) {
   await deleteRestaurantFolder(restaurant.id, 'products');
   const imageKeys = new Map();
   for (const product of menu.flatMap((category) => category.products)) {
-    const key = buildRestaurantFileKey(restaurant.id, 'products', 'png');
-    await saveFile(key, createSolidPng(PRODUCT_IMAGE_SIZE, PRODUCT_IMAGE_SIZE, product.color));
+    const { extension, data } = await loadProductImage(product);
+    const key = buildRestaurantFileKey(restaurant.id, 'products', extension);
+    await saveFile(key, data);
     imageKeys.set(product.name, key);
   }
 
