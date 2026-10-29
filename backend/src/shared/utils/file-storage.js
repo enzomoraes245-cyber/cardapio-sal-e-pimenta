@@ -39,9 +39,13 @@ export async function deleteFile(key) {
   }
 }
 
-/** Remove uma pasta inteira de um restaurante (usado pelo seed de demonstração). */
+/**
+ * Remove uma pasta do restaurante, ou todos os arquivos dele quando `folder` não é informado
+ * (usado pelo seed de demonstração e pela limpeza dos testes).
+ */
 export async function deleteRestaurantFolder(restaurantId, folder) {
-  await rm(resolveKeyPath(`restaurants/${restaurantId}/${folder}`), {
+  const key = folder ? `restaurants/${restaurantId}/${folder}` : `restaurants/${restaurantId}`;
+  await rm(resolveKeyPath(key), {
     recursive: true,
     force: true,
   });

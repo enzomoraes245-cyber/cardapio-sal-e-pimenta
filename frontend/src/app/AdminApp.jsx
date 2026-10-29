@@ -4,6 +4,8 @@ import { RequireAuth } from '../features/auth/components/RequireAuth.jsx';
 import { SessionProvider } from '../features/auth/components/SessionProvider.jsx';
 import { LoginPage } from '../features/auth/pages/LoginPage.jsx';
 import { CategoriesPage } from '../features/categories/pages/CategoriesPage.jsx';
+import { ProductFormPage } from '../features/products/pages/ProductFormPage.jsx';
+import { ProductsPage } from '../features/products/pages/ProductsPage.jsx';
 import { AdminHomePage } from '../features/restaurants/pages/AdminHomePage.jsx';
 import { AdminLayout } from '../layouts/AdminLayout.jsx';
 
@@ -20,6 +22,9 @@ export default function AdminApp() {
           <Route element={<AdminLayout />}>
             <Route index element={<AdminHomePage />} />
             <Route path="categorias" element={<CategoriesPage />} />
+            <Route path="produtos" element={<ProductsPage />} />
+            <Route path="produtos/novo" element={<ProductFormPage />} />
+            <Route path="produtos/:id" element={<ProductFormPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

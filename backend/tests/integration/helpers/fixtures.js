@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '../../../src/config/database.js';
+import { deleteRestaurantFolder } from '../../../src/shared/utils/file-storage.js';
 
 /**
  * Cria um restaurante isolado para testes, com uma categoria e produtos.
@@ -37,4 +38,5 @@ export async function deleteRestaurantFixtures(restaurantIds) {
   await prisma.category.deleteMany({ where });
   await prisma.adminUser.deleteMany({ where });
   await prisma.restaurant.deleteMany({ where: { id: { in: restaurantIds } } });
+  await Promise.all(restaurantIds.map((id) => deleteRestaurantFolder(id)));
 }
