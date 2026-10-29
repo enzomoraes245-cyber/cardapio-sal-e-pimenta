@@ -35,5 +35,6 @@ export async function deleteRestaurantFixtures(restaurantIds) {
   const where = { restaurantId: { in: restaurantIds } };
   await prisma.product.deleteMany({ where });
   await prisma.category.deleteMany({ where });
+  await prisma.adminUser.deleteMany({ where });
   await prisma.restaurant.deleteMany({ where: { id: { in: restaurantIds } } });
 }

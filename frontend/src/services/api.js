@@ -19,10 +19,30 @@ export function buildApiUrl(path) {
   return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+// Chamado quando uma rota protegida responde 401 (sessão expirada ou encerrada).
+let unauthorizedHandler = null;
+const PROTECTED_PREFIXES = ['/admin', '/platform'];
+
+/** Registra quem deve reagir a um 401 em rota protegida (ex.: provider de sessão). */
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = handler;
+  return () => {
+    if (unauthorizedHandler === handler) unauthorizedHandler = null;
+  };
+}
+
+function serializeBody(body, headers) {
+  if (body === undefined) return undefined;
+  // FormData (upload de imagens): o navegador define o Content-Type com o boundary.
+  if (typeof FormData !== 'undefined' && body instanceof FormData) return body;
+  headers['Content-Type'] = 'application/json';
+  return JSON.stringify(body);
+}
+
 /** Executa a requisição e devolve o conteúdo de `data`, ou lança ApiError. */
 export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
   const headers = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const serializedBody = serializeBody(body, headers);
 
   let response;
   try {
@@ -31,7 +51,7 @@ export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
       headers,
       signal,
       credentials: 'include',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: serializedBody,
     });
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
@@ -45,6 +65,9 @@ export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
 
   if (!response.ok) {
     const apiError = payload?.error;
+    if (response.status === 401 && PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+      unauthorizedHandler?.();
+    }
     throw new ApiError(apiError?.message ?? `Erro HTTP ${response.status}.`, {
       status: response.status,
       code: apiError?.code ?? 'HTTP_ERROR',

@@ -22,8 +22,19 @@ const envSchema = z.object({
         .filter(Boolean),
     ),
   SESSION_COOKIE_NAME: z.string().min(1).default('cd_session'),
+  SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(12),
+  // Endereço público do frontend: base da URL do cardápio no QR Code e origem aceita em escritas.
+  APP_PUBLIC_URL: z
+    .url()
+    .default('http://localhost:5173')
+    .transform((value) => value.replace(/\/+$/, '')),
   STORAGE_DRIVER: z.enum(['local']).default('local'),
   STORAGE_LOCAL_DIR: z.string().min(1).default('storage/uploads'),
+  UPLOAD_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5 * 1024 * 1024),
 });
 
 const parsed = envSchema.safeParse(process.env);
