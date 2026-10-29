@@ -21,7 +21,7 @@ afterAll(async () => {
 });
 
 describe('GET /api/v1/public/restaurants/:slug/menu', () => {
-  it('retorna apenas dados publicáveis e produtos disponíveis do restaurante', async () => {
+  it('retorna só dados publicáveis e produtos ativos, disponíveis e com foto', async () => {
     const response = await request(app).get(
       `/api/v1/public/restaurants/${fixtureA.restaurant.slug}/menu`,
     );
@@ -37,12 +37,20 @@ describe('GET /api/v1/public/restaurants/:slug/menu', () => {
     });
     expect(categories).toHaveLength(1);
     expect(categories[0].products).toEqual([
-      expect.objectContaining({ name: 'Disponível a', price: '12.50', imageUrl: null }),
+      {
+        id: expect.any(String),
+        name: 'Disponível a',
+        shortDescription: null,
+        detailedDescription: null,
+        price: '12.50',
+        imageUrl: `/uploads/restaurants/${fixtureA.restaurant.id}/products/fixture.png`,
+      },
     ]);
 
     const body = JSON.stringify(response.body);
     expect(body).not.toContain('restaurantId');
     expect(body).not.toContain('isAvailable');
+    expect(body).not.toContain('isActive');
     expect(body).not.toContain('Disponível b');
   });
 

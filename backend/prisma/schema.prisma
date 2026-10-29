@@ -82,23 +82,30 @@ model Product {
   id           String   @id @default(uuid()) @db.Uuid
   restaurantId String   @map("restaurant_id") @db.Uuid
   categoryId   String   @map("category_id") @db.Uuid
-  name         String   @db.VarChar(120)
-  description  String?  @db.VarChar(1000)
+  name                String   @db.VarChar(120)
+  /// Exibida na listagem do cardápio.
+  shortDescription    String?  @map("short_description") @db.VarChar(300)
+  /// Exibida no modal de detalhes.
+  detailedDescription String?  @map("detailed_description") @db.VarChar(2000)
   /// Valor monetário com precisão decimal (nunca ponto flutuante).
-  price        Decimal  @db.Decimal(10, 2)
-  /// Chave do arquivo no serviço de armazenamento (não a imagem em si).
-  imageKey     String?  @map("image_key") @db.VarChar(255)
-  isAvailable  Boolean  @default(true) @map("is_available")
+  price               Decimal  @db.Decimal(10, 2)
+  /// Chave da foto no armazenamento. Obrigatória no cadastro (validada na aplicação);
+  /// anulável no banco apenas por compatibilidade, e o cardápio público ignora produtos sem foto.
+  imageKey            String?  @map("image_key") @db.VarChar(255)
+  /// Situação cadastral: inativo nunca aparece no cardápio.
+  isActive            Boolean  @default(true) @map("is_active")
+  /// Situação operacional (ex.: acabou no dia): indisponível não aparece no cardápio.
+  isAvailable         Boolean  @default(true) @map("is_available")
   /// Ordem de exibição dentro da categoria (crescente).
-  position     Int      @default(0)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  position            Int      @default(0)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id])
   category   Category   @relation(fields: [categoryId, restaurantId], references: [id, restaurantId])
 
-  @@index([categoryId, restaurantId])
-  @@index([restaurantId, isAvailable])
+  @@index([categoryId, restaurantId, position])
+  @@index([restaurantId, isActive, isAvailable])
   @@map("products")
 }
 

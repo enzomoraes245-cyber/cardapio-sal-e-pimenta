@@ -5,7 +5,7 @@ export function normalizeSearchText(value) {
 }
 
 /**
- * Aplica categoria selecionada e busca textual (nome ou descrição).
+ * Aplica categoria selecionada e busca pelo nome do produto (CA-018).
  * Categorias que ficarem sem produtos após o filtro são omitidas.
  */
 export function filterMenuCategories(categories, { search = '', categoryId = null } = {}) {
@@ -16,11 +16,7 @@ export function filterMenuCategories(categories, { search = '', categoryId = nul
     .map((category) => ({
       ...category,
       products: term
-        ? category.products.filter(
-            (product) =>
-              normalizeSearchText(product.name).includes(term) ||
-              normalizeSearchText(product.description).includes(term),
-          )
+        ? category.products.filter((product) => normalizeSearchText(product.name).includes(term))
         : category.products,
     }))
     .filter((category) => category.products.length > 0);

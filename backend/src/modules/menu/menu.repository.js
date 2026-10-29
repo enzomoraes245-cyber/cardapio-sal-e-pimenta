@@ -2,9 +2,16 @@ import { prisma } from '../../config/database.js';
 
 const DISPLAY_ORDER = [{ position: 'asc' }, { createdAt: 'asc' }];
 
+/** Produto publicável: ativo, disponível e com foto (RN-004, RN-006, RN-007). */
+export const PUBLISHED_PRODUCT_WHERE = Object.freeze({
+  isActive: true,
+  isAvailable: true,
+  imageKey: { not: null },
+});
+
 /**
  * Busca o cardápio publicável de um restaurante pelo slug.
- * Seleciona explicitamente apenas campos públicos e somente produtos disponíveis.
+ * Seleciona explicitamente apenas campos públicos e somente produtos publicáveis.
  */
 export function findPublishedMenuBySlug(slug) {
   return prisma.restaurant.findUnique({
@@ -21,9 +28,16 @@ export function findPublishedMenuBySlug(slug) {
           id: true,
           name: true,
           products: {
-            where: { isAvailable: true },
+            where: PUBLISHED_PRODUCT_WHERE,
             orderBy: DISPLAY_ORDER,
-            select: { id: true, name: true, description: true, price: true, imageKey: true },
+            select: {
+              id: true,
+              name: true,
+              shortDescription: true,
+              detailedDescription: true,
+              price: true,
+              imageKey: true,
+            },
           },
         },
       },

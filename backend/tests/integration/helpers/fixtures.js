@@ -17,23 +17,14 @@ export async function createRestaurantFixture(label) {
   const category = await prisma.category.create({
     data: { restaurantId: restaurant.id, name: `Categoria ${label}`, position: 0 },
   });
+  const base = { restaurantId: restaurant.id, categoryId: category.id, price: '9.90' };
+  const imageKey = `restaurants/${restaurant.id}/products/fixture.png`;
   await prisma.product.createMany({
     data: [
-      {
-        restaurantId: restaurant.id,
-        categoryId: category.id,
-        name: `Disponível ${label}`,
-        price: '12.50',
-        position: 0,
-      },
-      {
-        restaurantId: restaurant.id,
-        categoryId: category.id,
-        name: `Indisponível ${label}`,
-        price: '9.90',
-        isAvailable: false,
-        position: 1,
-      },
+      { ...base, name: `Disponível ${label}`, price: '12.50', imageKey, position: 0 },
+      { ...base, name: `Indisponível ${label}`, imageKey, isAvailable: false, position: 1 },
+      { ...base, name: `Inativo ${label}`, imageKey, isActive: false, position: 2 },
+      { ...base, name: `Sem foto ${label}`, position: 3 },
     ],
   });
 

@@ -6,14 +6,14 @@ const CATEGORIES = [
     id: 'entradas',
     name: 'Entradas',
     products: [
-      { id: 'p1', name: 'Pastéis de queijo', description: 'Porção com 6 unidades.' },
-      { id: 'p2', name: 'Bruschetta', description: 'Tomate e manjericão.' },
+      { id: 'p1', name: 'Pastéis de queijo', shortDescription: 'Porção com 6 unidades.' },
+      { id: 'p2', name: 'Bruschetta', shortDescription: 'Tomate e manjericão.' },
     ],
   },
   {
     id: 'bebidas',
     name: 'Bebidas',
-    products: [{ id: 'p3', name: 'Suco de laranja', description: null }],
+    products: [{ id: 'p3', name: 'Suco de laranja', shortDescription: null }],
   },
 ];
 
@@ -22,13 +22,14 @@ describe('filterMenuCategories', () => {
     expect(filterMenuCategories(CATEGORIES)).toEqual(CATEGORIES);
   });
 
-  it('busca por nome ou descrição ignorando acentos e maiúsculas', () => {
+  it('busca pelo nome ignorando acentos e maiúsculas', () => {
     const result = filterMenuCategories(CATEGORIES, { search: 'PASTEIS' });
     expect(result.map((c) => c.id)).toEqual(['entradas']);
     expect(result[0].products.map((p) => p.id)).toEqual(['p1']);
+  });
 
-    const byDescription = filterMenuCategories(CATEGORIES, { search: 'manjericao' });
-    expect(byDescription[0].products.map((p) => p.id)).toEqual(['p2']);
+  it('não considera a descrição na busca (CA-018)', () => {
+    expect(filterMenuCategories(CATEGORIES, { search: 'manjericao' })).toEqual([]);
   });
 
   it('combina categoria selecionada e busca, omitindo categorias vazias', () => {

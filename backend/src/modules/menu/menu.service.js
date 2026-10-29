@@ -40,7 +40,8 @@ function toPublicMenu(restaurant) {
       products: category.products.map((product) => ({
         id: product.id,
         name: product.name,
-        description: product.description,
+        shortDescription: product.shortDescription,
+        detailedDescription: product.detailedDescription,
         // Decimal serializado como string para não perder precisão no JSON.
         price: product.price.toFixed(2),
         imageUrl: buildPublicFileUrl(product.imageKey),
