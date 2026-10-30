@@ -1,12 +1,10 @@
+import { Badge } from '../../../../components/admin/Badge.jsx';
+
+/** Situação operacional do restaurante (independente da situação financeira). */
 export function RestaurantStatusBadge({ status }) {
-  const suspended = status === 'SUSPENDED';
-  return (
-    <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        suspended ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'
-      }`}
-    >
-      {suspended ? 'Suspenso' : 'Ativo'}
-    </span>
+  return status === 'SUSPENDED' ? (
+    <Badge tone="danger">Suspenso</Badge>
+  ) : (
+    <Badge tone="success">Ativo</Badge>
   );
 }

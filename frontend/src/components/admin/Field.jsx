@@ -185,3 +185,18 @@ export function Switch({
     </div>
   );
 }
+
+/** Campo com complemento fixo à esquerda (ex.: "/cardapio/"); os atributos chegam ao <input>. */
+export function AddonInput({ addon, className, ...props }) {
+  return (
+    <div className="flex">
+      <span
+        aria-hidden="true"
+        className="inline-flex shrink-0 items-center rounded-l-admin-control border border-r-0 border-admin-line-strong bg-admin-subtle px-3 text-sm text-admin-faint"
+      >
+        {addon}
+      </span>
+      <input className={cx(inputClass, 'min-w-0 rounded-l-none', className)} {...props} />
+    </div>
+  );
+}

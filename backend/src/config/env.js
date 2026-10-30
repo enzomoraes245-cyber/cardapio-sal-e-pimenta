@@ -43,7 +43,21 @@ const envSchema = z.object({
   MAIL_DRIVER: z.preprocess((value) => value || undefined, z.enum(['disabled', 'log']).optional()),
   MAIL_FROM: z.string().trim().min(3).default('Cardápio Digital <nao-responda@cardapio.local>'),
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(10).max(1440).default(60),
+  // Fuso das datas de negócio (vencimento, início de assinatura, data de pagamento).
+  APP_TIMEZONE: z
+    .string()
+    .default('America/Sao_Paulo')
+    .refine(isValidTimeZone, 'Use um fuso IANA válido, ex.: America/Sao_Paulo.'),
 });
+
+function isValidTimeZone(timeZone) {
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const parsed = envSchema
   .superRefine((values, context) => {

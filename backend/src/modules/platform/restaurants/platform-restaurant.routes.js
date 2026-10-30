@@ -3,12 +3,15 @@ import { validate } from '../../../middlewares/validate.middleware.js';
 import { idParamsSchema } from '../../../shared/utils/common-schemas.js';
 import * as restaurantController from './platform-restaurant.controller.js';
 import {
+  adminAccessSchema,
   adminPasswordSchema,
   createAdminSchema,
   createRestaurantSchema,
   featuresSchema,
+  reactivateRestaurantSchema,
   restaurantAdminParamsSchema,
   suspendRestaurantSchema,
+  updateAdminSchema,
   updateRestaurantSchema,
 } from './platform-restaurant.validator.js';
 
@@ -16,6 +19,8 @@ import {
 export const platformRestaurantRoutes = Router();
 
 const withId = (body) => validate({ params: idParamsSchema, ...(body && { body }) });
+const withAdmin = (body) =>
+  validate({ params: restaurantAdminParamsSchema, ...(body && { body }) });
 
 platformRestaurantRoutes.get('/', restaurantController.list);
 platformRestaurantRoutes.post(
@@ -30,7 +35,11 @@ platformRestaurantRoutes.post(
   withId(suspendRestaurantSchema),
   restaurantController.suspend,
 );
-platformRestaurantRoutes.post('/:id/reactivate', withId(), restaurantController.reactivate);
+platformRestaurantRoutes.post(
+  '/:id/reactivate',
+  withId(reactivateRestaurantSchema),
+  restaurantController.reactivate,
+);
 platformRestaurantRoutes.put(
   '/:id/features',
   withId(featuresSchema),
@@ -41,8 +50,23 @@ platformRestaurantRoutes.post(
   withId(createAdminSchema),
   restaurantController.createAdmin,
 );
+platformRestaurantRoutes.patch(
+  '/:id/admins/:adminId',
+  withAdmin(updateAdminSchema),
+  restaurantController.updateAdmin,
+);
+platformRestaurantRoutes.post(
+  '/:id/admins/:adminId/block',
+  withAdmin(adminAccessSchema),
+  restaurantController.blockAdmin,
+);
+platformRestaurantRoutes.post(
+  '/:id/admins/:adminId/unblock',
+  withAdmin(adminAccessSchema),
+  restaurantController.unblockAdmin,
+);
 platformRestaurantRoutes.put(
   '/:id/admins/:adminId/password',
-  validate({ params: restaurantAdminParamsSchema, body: adminPasswordSchema }),
+  withAdmin(adminPasswordSchema),
   restaurantController.resetAdminPassword,
 );

@@ -14,6 +14,8 @@ const VARIANTS = {
     'text-admin-muted hover:bg-admin-neutral-soft hover:text-admin-text disabled:text-admin-faint/70 disabled:hover:bg-transparent',
   danger:
     'bg-admin-danger text-white shadow-admin-raise hover:bg-admin-danger-hover disabled:bg-admin-danger/45',
+  'danger-outline':
+    'border border-admin-danger/30 bg-admin-surface text-admin-danger shadow-admin-raise hover:border-admin-danger/50 hover:bg-admin-danger-soft disabled:opacity-50',
   'danger-ghost':
     'text-admin-danger hover:bg-admin-danger-soft disabled:text-admin-danger/50 disabled:hover:bg-transparent',
 };

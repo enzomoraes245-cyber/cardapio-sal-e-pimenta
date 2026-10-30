@@ -175,7 +175,9 @@ describe('suspensão (DEC-006, item 3)', () => {
   });
 
   it('reativação restaura o acesso sem mudar o slug', async () => {
-    const response = await asOperator.post(`/restaurants/${tenant.restaurant.id}/reactivate`);
+    const response = await asOperator.post(`/restaurants/${tenant.restaurant.id}/reactivate`, {
+      reason: 'Pagamento regularizado',
+    });
 
     expect(response.body.data).toMatchObject({
       status: 'ACTIVE',

@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router';
+import { Navigate, Route, Routes } from 'react-router';
 import { NotFoundState } from '../components/admin/NotFoundState.jsx';
 import { ToastProvider } from '../components/admin/Toast.jsx';
 import { PLATFORM_AREA } from '../features/auth/areas.js';
@@ -31,7 +31,8 @@ export default function BackofficeApp() {
           <Route path="redefinir-senha" element={<ResetPasswordPage area={area} />} />
           <Route element={<RequireAuth area={area} />}>
             <Route element={<BackofficeLayout />}>
-              <Route index element={<RestaurantsPage />} />
+              <Route index element={<Navigate to="restaurantes" replace />} />
+              <Route path="restaurantes" element={<RestaurantsPage />} />
               <Route path="restaurantes/novo" element={<NewRestaurantPage />} />
               <Route path="restaurantes/:id" element={<RestaurantDetailPage />} />
               <Route path="faturas" element={<InvoicesPage />} />

@@ -4,7 +4,7 @@ import { useSession } from '../features/auth/hooks/useSession.js';
 import { AdminShell } from './AdminShell.jsx';
 
 const NAVIGATION = [
-  { items: [{ to: '/backoffice', label: 'Restaurantes', icon: StoreIcon, end: true }] },
+  { items: [{ to: '/backoffice/restaurantes', label: 'Restaurantes', icon: StoreIcon }] },
   {
     label: 'Financeiro',
     items: [{ to: '/backoffice/faturas', label: 'Mensalidades', icon: ReceiptIcon }],

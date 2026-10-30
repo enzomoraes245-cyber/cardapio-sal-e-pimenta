@@ -4,6 +4,7 @@ const MONTH_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
   year: 'numeric',
   timeZone: 'UTC',
 });
+const DAY_FORMATTER = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' });
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short',
   timeStyle: 'short',
@@ -17,6 +18,11 @@ export function formatDate(isoDate) {
 /** "2026-01" → "jan. de 2026". */
 export function formatMonth(isoMonth) {
   return isoMonth ? MONTH_FORMATTER.format(new Date(`${isoMonth}-01T00:00:00Z`)) : '';
+}
+
+/** Só a data de um instante (ex.: data de cadastro), no fuso do navegador. */
+export function formatDayOf(isoDateTime) {
+  return isoDateTime ? DAY_FORMATTER.format(new Date(isoDateTime)) : '';
 }
 
 /** Data e hora no fuso do navegador. */

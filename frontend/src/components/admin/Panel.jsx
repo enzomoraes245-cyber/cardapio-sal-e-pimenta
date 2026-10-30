@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { cx } from './cx.js';
 
-/** Seção com título, descrição, ações e rodapé opcionais. */
+/** Seção com título, descrição, ações e rodapé opcionais. `flush` tira o espaçamento interno (listas). */
 export function Panel({
   title,
   description,
@@ -9,6 +9,7 @@ export function Panel({
   footer,
   className,
   bodyClassName,
+  flush = false,
   headingLevel: Heading = 'h2',
   children,
 }) {
@@ -33,7 +34,7 @@ export function Panel({
           {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
-      <div className={cx('px-5 py-5 sm:px-6', bodyClassName)}>{children}</div>
+      <div className={cx(!flush && 'px-5 py-5 sm:px-6', bodyClassName)}>{children}</div>
       {footer && (
         <footer className="flex flex-wrap items-center justify-end gap-2 rounded-b-admin-panel border-t border-admin-line bg-admin-subtle px-5 py-3 sm:px-6">
           {footer}

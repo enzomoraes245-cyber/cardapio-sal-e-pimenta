@@ -1,6 +1,11 @@
 import { Prisma } from '@prisma/client';
 import { NotFoundError } from '../../../shared/errors/app-error.js';
-import { parseIsoMonth, toIsoDate, toIsoMonth, todayUtc } from '../../../shared/utils/dates.js';
+import {
+  businessToday,
+  parseIsoMonth,
+  toIsoDate,
+  toIsoMonth,
+} from '../../../shared/utils/dates.js';
 import * as billingRepository from './billing.repository.js';
 
 /**
@@ -8,7 +13,7 @@ import * as billingRepository from './billing.repository.js';
  * Não há gateway de pagamento. "Vencida" é calculada: OPEN com vencimento no passado.
  */
 
-function toInvoice(invoice, today = todayUtc()) {
+function toInvoice(invoice, today = businessToday()) {
   return {
     id: invoice.id,
     restaurant: invoice.restaurant,
@@ -23,7 +28,11 @@ function toInvoice(invoice, today = todayUtc()) {
 
 export async function updateSubscription(restaurantId, data) {
   try {
-    const subscription = await billingRepository.upsertSubscription(restaurantId, data, todayUtc());
+    const subscription = await billingRepository.upsertSubscription(
+      restaurantId,
+      data,
+      businessToday(),
+    );
     return {
       monthlyAmount: subscription.monthlyAmount.toFixed(2),
       dueDay: subscription.dueDay,
@@ -38,7 +47,7 @@ export async function updateSubscription(restaurantId, data) {
 }
 
 export async function listInvoices({ status, overdue, month, restaurantId }) {
-  const today = todayUtc();
+  const today = businessToday();
   const invoices = await billingRepository.listInvoices({
     status,
     overdue,
