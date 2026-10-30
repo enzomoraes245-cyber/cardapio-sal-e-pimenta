@@ -12,6 +12,7 @@ import { useProductStatus } from '../../availability/hooks/useProductStatus.js';
 import { ProductListItem } from '../components/ProductListItem.jsx';
 import { useProducts } from '../hooks/useProducts.js';
 import { PUBLICATION_FILTERS, publicationStatus } from '../utils/publication.js';
+import { plural } from '../../../utils/plural.js';
 
 const newProductButton = (
   <LinkButton to="/admin/produtos/novo" variant="primary" icon={PlusIcon}>
@@ -153,8 +154,8 @@ export function ProductsPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p role="status" className="text-[13px] text-admin-muted">
               {filtering
-                ? `${shownCount} de ${total} produto(s)`
-                : `${total} produto(s) · ${publishedCount} no cardápio`}
+                ? `${shownCount} de ${plural(total, 'produto')}`
+                : `${plural(total, 'produto')} · ${publishedCount} no cardápio`}
             </p>
             {filtering && (
               <p className="text-[13px] text-admin-faint">
@@ -189,7 +190,9 @@ export function ProductsPage() {
                     {category.name}
                   </h2>
                   {!category.isActive && <Badge tone="neutral">Categoria oculta</Badge>}
-                  <span className="text-[13px] text-admin-faint">{products.length} item(ns)</span>
+                  <span className="text-[13px] text-admin-faint">
+                    {plural(products.length, 'item', 'itens')}
+                  </span>
                 </header>
                 {visible.length === 0 ? (
                   <p className="px-5 py-4 text-sm text-admin-muted sm:px-6">

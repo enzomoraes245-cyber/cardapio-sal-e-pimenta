@@ -9,6 +9,7 @@ import { createRequestId } from '../../../utils/request-id.js';
 import { CategoryListItem } from '../components/CategoryListItem.jsx';
 import { CategoryNameForm } from '../components/CategoryNameForm.jsx';
 import { useCategories } from '../hooks/useCategories.js';
+import { plural } from '../../../utils/plural.js';
 
 /**
  * Categorias do cardápio: cadastro, renomeação, exibição (ocultar mantém os produtos) e ordem.
@@ -84,7 +85,7 @@ export function CategoriesPage() {
       {status === 'success' && data.length > 0 && (
         <Panel
           title="Ordem no cardápio"
-          description={`${data.length} categoria(s) · ${data.filter((c) => c.isActive).length} visível(is)`}
+          description={`${plural(data.length, 'categoria')} · ${plural(data.filter((c) => c.isActive).length, 'visível', 'visíveis')}`}
           flush
         >
           <ol className="divide-y divide-admin-line">
@@ -111,7 +112,7 @@ export function CategoriesPage() {
       {hiding && (
         <ConfirmDialog
           title={`Ocultar "${hiding.name}"?`}
-          description={`${hiding.publishableCount} produto(s) desta categoria deixam de aparecer no cardápio. Nada é apagado: reative quando quiser.`}
+          description={`${hiding.publishableCount === 1 ? '1 produto desta categoria deixa' : `${hiding.publishableCount} produtos desta categoria deixam`} de aparecer no cardápio. Nada é apagado: reative quando quiser.`}
           confirmLabel="Ocultar categoria"
           onClose={() => setHiding(null)}
           onConfirm={async () => {

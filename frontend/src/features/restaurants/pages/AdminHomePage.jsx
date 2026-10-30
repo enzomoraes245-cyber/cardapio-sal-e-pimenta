@@ -22,6 +22,7 @@ import { listCategories } from '../../categories/services/categories.service.js'
 import { getEstablishment } from '../../establishment/services/establishment.service.js';
 import { listProducts } from '../../products/services/products.service.js';
 import { publicationStatus } from '../../products/utils/publication.js';
+import { plural } from '../../../utils/plural.js';
 
 async function loadSummary({ signal }) {
   const [categories, products, establishment] = await Promise.all([
@@ -113,19 +114,28 @@ export function AdminHomePage() {
     [
       summary.byStatus.photo > 0 && {
         to: '/admin/produtos?situacao=sem-foto',
-        text: `${summary.byStatus.photo} produto(s) sem foto ainda não aparecem no cardápio`,
+        text:
+          summary.byStatus.photo === 1
+            ? '1 produto sem foto ainda não aparece no cardápio'
+            : `${summary.byStatus.photo} produtos sem foto ainda não aparecem no cardápio`,
       },
       summary.byStatus.unavailable > 0 && {
         to: '/admin/produtos?situacao=indisponiveis',
-        text: `${summary.byStatus.unavailable} produto(s) marcados como indisponíveis`,
+        text:
+          summary.byStatus.unavailable === 1
+            ? '1 produto marcado como indisponível'
+            : `${summary.byStatus.unavailable} produtos marcados como indisponíveis`,
       },
       summary.byStatus.category > 0 && {
         to: '/admin/produtos?situacao=categoria-oculta',
-        text: `${summary.byStatus.category} produto(s) em categorias ocultas`,
+        text:
+          summary.byStatus.category === 1
+            ? '1 produto em categoria oculta'
+            : `${summary.byStatus.category} produtos em categorias ocultas`,
       },
       summary.emptyCategories.length > 0 && {
         to: '/admin/categorias',
-        text: `${summary.emptyCategories.length} categoria(s) visível(is) sem nenhum produto no cardápio`,
+        text: `${plural(summary.emptyCategories.length, 'categoria visível', 'categorias visíveis')} sem nenhum produto no cardápio`,
       },
     ].filter(Boolean);
 
@@ -163,7 +173,7 @@ export function AdminHomePage() {
             <Stat
               label="Produtos no cardápio"
               value={summary.byStatus.published}
-              detail={`de ${data.products.length} cadastrado(s)`}
+              detail={`de ${plural(data.products.length, 'cadastrado')}`}
               definition="Ativos, disponíveis, com foto e em categoria visível."
               icon={PackageIcon}
               tone="success"
@@ -175,7 +185,7 @@ export function AdminHomePage() {
               value={hidden}
               detail={
                 hidden > 0
-                  ? `${summary.byStatus.photo} sem foto · ${summary.byStatus.unavailable} indisponível(is) · ${summary.byStatus.inactive} inativo(s)`
+                  ? `${summary.byStatus.photo} sem foto · ${plural(summary.byStatus.unavailable, 'indisponível', 'indisponíveis')} · ${plural(summary.byStatus.inactive, 'inativo')}`
                   : 'Nenhum produto escondido'
               }
               definition="Cadastrados, mas sem aparecer para os clientes agora."
@@ -187,7 +197,7 @@ export function AdminHomePage() {
             <Stat
               label="Categorias visíveis"
               value={summary.visibleCategories}
-              detail={`de ${data.categories.length} categoria(s)`}
+              detail={`de ${plural(data.categories.length, 'categoria')}`}
               definition="Categorias ocultas e seus produtos não aparecem no cardápio."
               icon={LayersIcon}
               tone="accent"

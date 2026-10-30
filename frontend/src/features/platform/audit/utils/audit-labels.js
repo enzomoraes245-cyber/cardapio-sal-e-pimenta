@@ -1,6 +1,7 @@
 import { formatPrice } from '../../../../utils/format-currency.js';
 import { formatDate, formatMonth } from '../../../../utils/format-date.js';
 import { paymentMethodLabel } from '../../billing/utils/billing-labels.js';
+import { plural } from '../../../../utils/plural.js';
 
 /** Texto de cada ação registrada no histórico (códigos estáveis vindos da API). */
 export const AUDIT_ACTION_LABELS = {
@@ -101,7 +102,7 @@ export function describeAuditEvent({ action, metadata }) {
     lines.push(`${formatPrice(metadata.amount)}${paidOn}${method}`);
   }
   if (action === 'INVOICES_GENERATED' && metadata.month) {
-    lines.push(`Competência ${formatMonth(metadata.month)}: ${metadata.created} gerada(s)`);
+    lines.push(`Competência ${formatMonth(metadata.month)}: ${plural(metadata.created, 'gerada')}`);
   }
   return lines;
 }

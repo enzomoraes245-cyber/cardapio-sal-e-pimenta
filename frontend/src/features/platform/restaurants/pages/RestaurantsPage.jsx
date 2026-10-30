@@ -12,6 +12,7 @@ import { formatPrice } from '../../../../utils/format-currency.js';
 import { matchesSearch } from '../../../../utils/search-text.js';
 import { RestaurantStatusBadge } from '../components/RestaurantStatusBadge.jsx';
 import { listRestaurants } from '../services/platform-restaurants.service.js';
+import { plural } from '../../../../utils/plural.js';
 
 const SITUATIONS = {
   all: () => true,
@@ -180,8 +181,8 @@ export function RestaurantsPage() {
 
           <p className="text-[13px] text-admin-muted" role="status">
             {rows.length === data.length
-              ? `${data.length} restaurante(s)`
-              : `${rows.length} de ${data.length} restaurante(s)`}
+              ? plural(data.length, 'restaurante')
+              : `${rows.length} de ${plural(data.length, 'restaurante')}`}
           </p>
 
           {rows.length === 0 ? (
