@@ -1,7 +1,9 @@
 import QRCode from 'qrcode';
+import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
+import { buildPublicFileUrl } from '../../config/storage.js';
 import { NotFoundError } from '../../shared/errors/app-error.js';
-import * as restaurantRepository from '../restaurants/restaurant.repository.js';
+import { toFeatureFlags } from '../restaurants/restaurant-features.js';
 
 /** Opções fixas: o mesmo endereço sempre gera a mesma imagem (RF-036, CA-030). */
 export const QR_CODE_OPTIONS = Object.freeze({
@@ -11,11 +13,61 @@ export const QR_CODE_OPTIONS = Object.freeze({
   errorCorrectionLevel: 'M',
 });
 
-/** URL pública do cardápio. Depende só do slug, que não muda com o conteúdo do cardápio. */
+/** Mesmo QR em vetor (impressão em qualquer tamanho), sempre preto sobre branco. */
+export const QR_CODE_SVG_OPTIONS = Object.freeze({
+  type: 'svg',
+  margin: 2,
+  errorCorrectionLevel: 'M',
+  color: { dark: '#000000', light: '#ffffff' },
+});
+
+const LOCAL_HOSTS = [/^localhost$/, /\.localhost$/, /^127\./, /^0\.0\.0\.0$/, /^::1?$/];
+const PRIVATE_NETWORK_HOSTS = [
+  /^10\./,
+  /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^169\.254\./,
+  /^f[cd][0-9a-f]{2}:/, // IPv6 de rede local (fc00::/7)
+  /^fe[89ab][0-9a-f]:/, // IPv6 de enlace local (fe80::/10)
+  /\.local$/, // nomes mDNS da rede local
+  /^[^.:]+$/, // nome sem domínio (ex.: "meu-pc")
+];
+
+/**
+ * Tipo do endereço codificado: "local" (só funciona no próprio computador), "private-network"
+ * (só na mesma rede, ex.: `npm run dev:celular`) ou "public". O painel avisa nos dois primeiros.
+ */
+export function classifyAddress(url) {
+  const host = new URL(url).hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (LOCAL_HOSTS.some((pattern) => pattern.test(host))) return 'local';
+  if (PRIVATE_NETWORK_HOSTS.some((pattern) => pattern.test(host))) return 'private-network';
+  return 'public';
+}
+
+/**
+ * URL pública do cardápio e dados para o material impresso. Depende só do slug, que não muda
+ * com o conteúdo do cardápio. O logotipo segue o módulo de personalização, como no cardápio.
+ */
 export async function getPublicMenuInfo(restaurantId) {
-  const restaurant = await restaurantRepository.findSlugById(restaurantId);
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: {
+      slug: true,
+      name: true,
+      customization: { select: { logoKey: true } },
+      features: { select: { feature: true, enabled: true } },
+    },
+  });
   if (!restaurant) throw new NotFoundError('Restaurante não encontrado.');
-  return { slug: restaurant.slug, url: `${env.APP_PUBLIC_URL}/cardapio/${restaurant.slug}` };
+  const url = `${env.APP_PUBLIC_URL}/cardapio/${restaurant.slug}`;
+  const showLogo = toFeatureFlags(restaurant.features).customization;
+  return {
+    slug: restaurant.slug,
+    url,
+    restaurantName: restaurant.name,
+    logoUrl: showLogo ? buildPublicFileUrl(restaurant.customization?.logoKey) : null,
+    addressKind: classifyAddress(url),
+  };
 }
 
 /** RF-033: PNG do QR Code apontando para a URL pública do restaurante. */
@@ -23,4 +75,16 @@ export async function generateQrCodePng(restaurantId) {
   const { slug, url } = await getPublicMenuInfo(restaurantId);
   // A biblioteca altera o objeto de opções recebido: envia uma cópia.
   return { slug, png: await QRCode.toBuffer(url, { ...QR_CODE_OPTIONS }) };
+}
+
+/** O mesmo QR Code em SVG, para impressão e gráficas. */
+export async function generateQrCodeSvg(restaurantId) {
+  const { slug, url } = await getPublicMenuInfo(restaurantId);
+  return {
+    slug,
+    svg: await QRCode.toString(url, {
+      ...QR_CODE_SVG_OPTIONS,
+      color: { ...QR_CODE_SVG_OPTIONS.color },
+    }),
+  };
 }

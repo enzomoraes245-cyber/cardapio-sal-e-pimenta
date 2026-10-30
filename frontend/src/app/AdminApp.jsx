@@ -16,6 +16,7 @@ import { EstablishmentPage } from '../features/establishment/pages/Establishment
 import { ProductFormPage } from '../features/products/pages/ProductFormPage.jsx';
 import { ProductsPage } from '../features/products/pages/ProductsPage.jsx';
 import { QrCodePage } from '../features/qrcode/pages/QrCodePage.jsx';
+import { QrCodePrintPage } from '../features/qrcode/pages/QrCodePrintPage.jsx';
 import { AdminHomePage } from '../features/restaurants/pages/AdminHomePage.jsx';
 import { AdminLayout } from '../layouts/AdminLayout.jsx';
 
@@ -34,6 +35,10 @@ export default function AdminApp() {
           <Route path="recuperar-senha" element={<ForgotPasswordPage area={area} />} />
           <Route path="redefinir-senha" element={<ResetPasswordPage area={area} />} />
           <Route element={<RequireAuth area={area} />}>
+            {/* Folha de impressão: página inteira, sem o menu do painel. */}
+            <Route element={<RequireFeature feature="qrcode" title="QR Code" standalone />}>
+              <Route path="qrcode/impressao" element={<QrCodePrintPage />} />
+            </Route>
             <Route element={<AdminLayout />}>
               <Route index element={<AdminHomePage />} />
               <Route path="categorias" element={<CategoriesPage />} />

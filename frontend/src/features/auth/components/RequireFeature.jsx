@@ -8,12 +8,13 @@ import { useSession } from '../hooks/useSession.js';
 /**
  * Páginas de módulos que o backoffice pode bloquear (DEC-006). Com o módulo bloqueado, a página
  * explica a situação em vez de falhar (o menu já esconde o item; aqui cobre o acesso pelo link).
+ * `standalone` é para páginas fora do layout do painel (ex.: folha de impressão).
  */
-export function RequireFeature({ feature, title }) {
+export function RequireFeature({ feature, title, standalone = false }) {
   const { features } = useSession();
   if (features?.[feature] !== false) return <Outlet />;
 
-  return (
+  const locked = (
     <div className="space-y-8">
       <PageHeader title={title} />
       <EmptyState
@@ -26,6 +27,12 @@ export function RequireFeature({ feature, title }) {
           </LinkButton>
         }
       />
+    </div>
+  );
+  if (!standalone) return locked;
+  return (
+    <div className="min-h-dvh bg-admin-canvas px-4 py-10 font-admin text-admin-text antialiased sm:px-8">
+      <main className="mx-auto max-w-3xl">{locked}</main>
     </div>
   );
 }
