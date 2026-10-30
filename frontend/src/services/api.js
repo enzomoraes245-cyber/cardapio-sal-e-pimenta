@@ -19,16 +19,23 @@ export function buildApiUrl(path) {
   return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-// Chamado quando uma rota protegida responde 401 (sessão expirada ou encerrada).
-let unauthorizedHandler = null;
+// Chamado quando uma rota protegida responde 401 (sessão expirada ou encerrada) ou 403 de
+// restaurante suspenso / usuário bloqueado durante o uso.
+let sessionErrorHandler = null;
 const PROTECTED_PREFIXES = ['/admin', '/platform'];
+const SESSION_ERROR_CODES = new Set(['RESTAURANT_SUSPENDED', 'USER_DISABLED']);
 
-/** Registra quem deve reagir a um 401 em rota protegida (ex.: provider de sessão). */
-export function setUnauthorizedHandler(handler) {
-  unauthorizedHandler = handler;
+/** Registra quem deve reagir a erros de sessão em rota protegida (ex.: provider de sessão). */
+export function setSessionErrorHandler(handler) {
+  sessionErrorHandler = handler;
   return () => {
-    if (unauthorizedHandler === handler) unauthorizedHandler = null;
+    if (sessionErrorHandler === handler) sessionErrorHandler = null;
   };
+}
+
+function isSessionError(path, status, code) {
+  if (!PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix))) return false;
+  return status === 401 || (status === 403 && SESSION_ERROR_CODES.has(code));
 }
 
 function serializeBody(body, headers) {
@@ -71,14 +78,13 @@ export async function apiRequest(
 
   if (!response.ok) {
     const apiError = payload?.error;
-    if (response.status === 401 && PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix))) {
-      unauthorizedHandler?.();
-    }
-    throw new ApiError(apiError?.message ?? `Erro HTTP ${response.status}.`, {
+    const error = new ApiError(apiError?.message ?? `Erro HTTP ${response.status}.`, {
       status: response.status,
       code: apiError?.code ?? 'HTTP_ERROR',
       details: apiError?.details,
     });
+    if (isSessionError(path, error.status, error.code)) sessionErrorHandler?.(error);
+    throw error;
   }
 
   return payload?.data ?? null;

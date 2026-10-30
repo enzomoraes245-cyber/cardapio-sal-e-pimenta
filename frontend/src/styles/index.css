@@ -62,6 +62,8 @@
   --color-admin-accent: #9a3412;
   --color-admin-accent-hover: #7c2d12;
   --color-admin-accent-soft: #fff4ed;
+  /* Acento sobre a barra lateral escura (o terracota puro tem pouco contraste ali). */
+  --color-admin-accent-bright: #ef8354;
 
   --color-admin-success: #15803d;
   --color-admin-success-soft: #f0fdf4;

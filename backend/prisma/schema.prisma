@@ -30,6 +30,7 @@ model Restaurant {
   features      RestaurantFeature[]
   subscription  Subscription?
   invoices      Invoice[]
+  auditEvents   AuditEvent[]
 
   @@index([status])
   @@map("restaurants")
@@ -111,7 +112,8 @@ model PlatformAdmin {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  sessions PlatformSession[]
+  sessions            PlatformSession[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("platform_admins")
 }
@@ -132,17 +134,20 @@ model PlatformSession {
 
 /// Usuário da retaguarda. Pertence a um único restaurante.
 model AdminUser {
-  id           String   @id @default(uuid()) @db.Uuid
-  restaurantId String   @map("restaurant_id") @db.Uuid
-  name         String   @db.VarChar(120)
+  id           String    @id @default(uuid()) @db.Uuid
+  restaurantId String    @map("restaurant_id") @db.Uuid
+  name         String    @db.VarChar(120)
   /// Único globalmente: o login identifica o restaurante a partir do usuário.
-  email        String   @unique @db.VarChar(254)
-  passwordHash String   @map("password_hash") @db.VarChar(255)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  email        String    @unique @db.VarChar(254)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  /// Acesso bloqueado pelo backoffice: não entra na retaguarda até ser desbloqueado.
+  disabledAt   DateTime? @map("disabled_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  restaurant Restaurant     @relation(fields: [restaurantId], references: [id])
-  sessions   AdminSession[]
+  restaurant          Restaurant           @relation(fields: [restaurantId], references: [id])
+  sessions            AdminSession[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([restaurantId])
   @@map("admin_users")
@@ -225,4 +230,54 @@ model RestaurantCustomization {
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@map("restaurant_customizations")
+}
+
+/// Pedido de redefinição de senha por e-mail. Só o hash do token fica no banco; uso único.
+/// Pertence a um administrador de restaurante OU a um operador do backoffice (CHECK no banco).
+model PasswordResetToken {
+  id              String    @id @default(uuid()) @db.Uuid
+  adminUserId     String?   @map("admin_user_id") @db.Uuid
+  platformAdminId String?   @map("platform_admin_id") @db.Uuid
+  tokenHash       String    @unique @map("token_hash") @db.Char(64)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt          DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  adminUser     AdminUser?     @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  platformAdmin PlatformAdmin? @relation(fields: [platformAdminId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([platformAdminId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+enum AuditActorType {
+  PLATFORM_ADMIN
+  RESTAURANT_ADMIN
+  SYSTEM
+}
+
+/// Histórico de ações relevantes: autor, data/hora, motivo e detalhes (antes/depois).
+/// Gravado na mesma transação da alteração; a aplicação nunca altera nem apaga registros.
+model AuditEvent {
+  id           String         @id @default(uuid()) @db.Uuid
+  occurredAt   DateTime       @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  actorType    AuditActorType @map("actor_type")
+  /// Operador ou administrador autor da ação (sem FK: pode vir de duas tabelas).
+  actorId      String?        @map("actor_id") @db.Uuid
+  /// Nome do autor no momento da ação, para o histórico continuar legível.
+  actorName    String?        @map("actor_name") @db.VarChar(120)
+  restaurantId String?        @map("restaurant_id") @db.Uuid
+  action       String         @db.VarChar(60)
+  entityType   String?        @map("entity_type") @db.VarChar(40)
+  entityId     String?        @map("entity_id") @db.Uuid
+  reason       String?        @db.VarChar(300)
+  metadata     Json?
+
+  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+
+  @@index([restaurantId, occurredAt(sort: Desc)])
+  @@index([occurredAt(sort: Desc)])
+  @@map("audit_events")
 }

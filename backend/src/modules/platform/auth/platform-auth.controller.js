@@ -28,3 +28,8 @@ export async function logout(req, res) {
 export async function me(req, res) {
   res.json({ data: await platformAuthService.getCurrentAdmin(req.platformAuth) });
 }
+
+export async function changePassword(req, res) {
+  await platformAuthService.changePassword(req.platformAuth, req.validated.body);
+  res.status(204).end();
+}

@@ -19,3 +19,12 @@ export const adminSessionService = Object.freeze({
   login,
   logout,
 });
+
+/** Senha e recuperação de acesso da retaguarda (mesmo formato do backoffice). */
+export const adminAccountService = Object.freeze({
+  changePassword: ({ currentPassword, newPassword }) =>
+    api.put('/auth/password', { currentPassword, newPassword }),
+  getRecoveryOptions: ({ signal } = {}) => api.get('/auth/password/recovery', { signal }),
+  requestPasswordReset: (email) => api.post('/auth/password/forgot', { email }),
+  resetPassword: ({ token, password }) => api.post('/auth/password/reset', { token, password }),
+});

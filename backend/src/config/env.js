@@ -37,9 +37,25 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(5 * 1024 * 1024),
+  // Envio de e-mail (recuperação de senha). O provedor ainda não foi definido (DEC-010):
+  // "log" escreve a mensagem no console (só desenvolvimento e testes); "disabled" desliga o envio.
+  // Padrão: "log" fora de produção e "disabled" em produção.
+  MAIL_DRIVER: z.preprocess((value) => value || undefined, z.enum(['disabled', 'log']).optional()),
+  MAIL_FROM: z.string().trim().min(3).default('Cardápio Digital <nao-responda@cardapio.local>'),
+  PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(10).max(1440).default(60),
 });
 
-const parsed = envSchema.safeParse(process.env);
+const parsed = envSchema
+  .superRefine((values, context) => {
+    if (values.NODE_ENV === 'production' && values.MAIL_DRIVER === 'log') {
+      context.addIssue({
+        code: 'custom',
+        path: ['MAIL_DRIVER'],
+        message: 'O driver "log" expõe os links no console e não pode ser usado em produção.',
+      });
+    }
+  })
+  .safeParse(process.env);
 
 if (!parsed.success) {
   const issues = parsed.error.issues
@@ -48,7 +64,10 @@ if (!parsed.success) {
   throw new Error(`Variáveis de ambiente inválidas:\n${issues}`);
 }
 
+const isProduction = parsed.data.NODE_ENV === 'production';
+
 export const env = Object.freeze({
   ...parsed.data,
-  isProduction: parsed.data.NODE_ENV === 'production',
+  MAIL_DRIVER: parsed.data.MAIL_DRIVER ?? (isProduction ? 'disabled' : 'log'),
+  isProduction,
 });

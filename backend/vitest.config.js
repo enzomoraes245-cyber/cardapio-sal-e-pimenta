@@ -25,6 +25,6 @@ export default defineConfig({
     include: ['tests/**/*.test.js'],
     testTimeout: 15_000,
     hookTimeout: 30_000,
-    env: { DATABASE_URL: testDatabaseUrl },
+    env: { DATABASE_URL: testDatabaseUrl, NODE_ENV: 'test', MAIL_DRIVER: 'log' },
   },
 });
