@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Button } from '../../../../components/ui/Button.jsx';
-import { Card } from '../../../../components/ui/Card.jsx';
-import { FormFeedback } from '../../../../components/ui/FormFeedback.jsx';
-import { FormField, INPUT_CLASS } from '../../../../components/ui/FormField.jsx';
+import { Button } from '../../../../components/admin/Button.jsx';
+import { Panel } from '../../../../components/admin/Panel.jsx';
+import { FormFeedback } from '../../../../components/admin/Alert.jsx';
+import { Field, inputClass } from '../../../../components/admin/Field.jsx';
 import { useSubmit } from '../../../../hooks/useSubmit.js';
 import { apiValidationErrors, validateForm } from '../../../../utils/validate-form.js';
 import { createAdmin, resetAdminPassword } from '../services/platform-restaurants.service.js';
@@ -31,12 +31,12 @@ export function AdminsCard({ restaurant, onUpdated }) {
   const bind = (field) => ({
     value: values[field],
     onChange: (event) => setValues((previous) => ({ ...previous, [field]: event.target.value })),
-    className: INPUT_CLASS,
+    className: inputClass,
   });
   const apiErrors = apiValidationErrors(feedback?.error) ?? {};
 
   return (
-    <Card title="Administradores" description="Acessam a retaguarda deste restaurante.">
+    <Panel title="Administradores" description="Acessam a retaguarda deste restaurante.">
       <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
         {restaurant.admins.map((admin) => (
           <AdminRow key={admin.id} restaurantId={restaurant.id} admin={admin} />
@@ -46,22 +46,22 @@ export function AdminsCard({ restaurant, onUpdated }) {
       <form onSubmit={handleSubmit} noValidate className="space-y-3">
         <p className="text-sm font-medium text-slate-800">Adicionar administrador</p>
         <div className="grid gap-3 sm:grid-cols-3">
-          <FormField label="Nome" error={errors.name}>
+          <Field label="Nome" error={errors.name}>
             <input {...bind('name')} maxLength={120} />
-          </FormField>
-          <FormField label="E-mail" error={errors.email ?? apiErrors['admin.email']}>
+          </Field>
+          <Field label="E-mail" error={errors.email ?? apiErrors['admin.email']}>
             <input type="email" autoComplete="off" {...bind('email')} />
-          </FormField>
-          <FormField label="Senha inicial" error={errors.password}>
+          </Field>
+          <Field label="Senha inicial" error={errors.password}>
             <input type="password" autoComplete="new-password" {...bind('password')} />
-          </FormField>
+          </Field>
         </div>
         <FormFeedback feedback={feedback} />
         <Button type="submit" variant="secondary" disabled={submitting}>
           Adicionar
         </Button>
       </form>
-    </Card>
+    </Panel>
   );
 }
 
@@ -102,15 +102,15 @@ function AdminRow({ restaurantId, admin }) {
       {resetting && (
         <form onSubmit={handleReset} noValidate className="flex flex-wrap items-end gap-2">
           <div className="min-w-48 flex-1">
-            <FormField label={`Nova senha de ${admin.name}`}>
+            <Field label={`Nova senha de ${admin.name}`}>
               <input
                 type="password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className={INPUT_CLASS}
+                className={inputClass}
               />
-            </FormField>
+            </Field>
           </div>
           <Button type="submit" size="sm" disabled={submitting}>
             Salvar

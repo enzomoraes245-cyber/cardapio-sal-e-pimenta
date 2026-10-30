@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Button } from '../../../../components/ui/Button.jsx';
-import { Card } from '../../../../components/ui/Card.jsx';
-import { FormFeedback } from '../../../../components/ui/FormFeedback.jsx';
-import { FormField, INPUT_CLASS } from '../../../../components/ui/FormField.jsx';
+import { Button } from '../../../../components/admin/Button.jsx';
+import { Panel } from '../../../../components/admin/Panel.jsx';
+import { FormFeedback } from '../../../../components/admin/Alert.jsx';
+import { Field, inputClass } from '../../../../components/admin/Field.jsx';
 import { useSubmit } from '../../../../hooks/useSubmit.js';
 import { formatMoneyInput } from '../../../../utils/money-input.js';
 import { validateForm } from '../../../../utils/validate-form.js';
@@ -32,25 +32,25 @@ export function SubscriptionCard({ restaurant, onUpdated }) {
   const bind = (field) => ({
     value: values[field],
     onChange: (event) => setValues((previous) => ({ ...previous, [field]: event.target.value })),
-    className: INPUT_CLASS,
+    className: inputClass,
   });
 
   return (
-    <Card title="Assinatura" description="Cobrança manual, sem gateway de pagamento.">
+    <Panel title="Assinatura" description="Cobrança manual, sem gateway de pagamento.">
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Mensalidade (R$)" error={errors.monthlyAmount}>
+          <Field label="Mensalidade (R$)" error={errors.monthlyAmount}>
             <input inputMode="decimal" {...bind('monthlyAmount')} />
-          </FormField>
-          <FormField label="Dia de vencimento" hint="Entre 1 e 28." error={errors.dueDay}>
+          </Field>
+          <Field label="Dia de vencimento" hint="Entre 1 e 28." error={errors.dueDay}>
             <input type="number" min={1} max={28} {...bind('dueDay')} />
-          </FormField>
+          </Field>
         </div>
         <FormFeedback feedback={feedback} />
         <Button type="submit" disabled={submitting}>
           Salvar assinatura
         </Button>
       </form>
-    </Card>
+    </Panel>
   );
 }

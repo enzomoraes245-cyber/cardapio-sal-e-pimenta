@@ -39,9 +39,15 @@ function serializeBody(body, headers) {
   return JSON.stringify(body);
 }
 
-/** Executa a requisição e devolve o conteúdo de `data`, ou lança ApiError. */
-export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
-  const headers = { Accept: 'application/json' };
+/**
+ * Executa a requisição e devolve o conteúdo de `data`, ou lança ApiError.
+ * `headers` acrescenta cabeçalhos (ex.: Idempotency-Key nos cadastros).
+ */
+export async function apiRequest(
+  path,
+  { method = 'GET', body, signal, headers: extraHeaders } = {},
+) {
+  const headers = { Accept: 'application/json', ...extraHeaders };
   const serializedBody = serializeBody(body, headers);
 
   let response;

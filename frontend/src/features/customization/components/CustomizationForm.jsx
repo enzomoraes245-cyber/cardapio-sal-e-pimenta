@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Button } from '../../../components/ui/Button.jsx';
-import { FormField, INPUT_CLASS } from '../../../components/ui/FormField.jsx';
-import { ImageInput } from '../../../components/ui/ImageInput.jsx';
+import { Button } from '../../../components/admin/Button.jsx';
+import { Field, inputClass } from '../../../components/admin/Field.jsx';
+import { ImageInput } from '../../../components/admin/ImageInput.jsx';
 import { apiValidationErrors, validateForm } from '../../../utils/validate-form.js';
 import { CategoryTabs } from '../../menu/components/CategoryTabs.jsx';
 import { MenuHeader } from '../../menu/components/MenuHeader.jsx';
@@ -85,14 +85,14 @@ export function CustomizationForm({ customization, onSubmit }) {
   return (
     <form onSubmit={handleSubmit} noValidate className="grid gap-6 lg:grid-cols-[1fr_22rem]">
       <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
-        <FormField label="Nome do restaurante" error={errors.name}>
+        <Field label="Nome do restaurante" error={errors.name}>
           <input
             value={values.name}
             onChange={(event) => setField('name')(event.target.value)}
             maxLength={120}
-            className={INPUT_CLASS}
+            className={inputClass}
           />
-        </FormField>
+        </Field>
         <div className="grid gap-5 sm:grid-cols-2">
           <ColorField
             label="Cor principal"

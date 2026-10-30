@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button } from '../../../components/ui/Button.jsx';
-import { FormField, INPUT_CLASS } from '../../../components/ui/FormField.jsx';
+import { Button } from '../../../components/admin/Button.jsx';
+import { Field, inputClass } from '../../../components/admin/Field.jsx';
 import { apiValidationErrors, validateForm } from '../../../utils/validate-form.js';
 import { categorySchema } from '../validators/category.schema.js';
 
@@ -33,14 +33,14 @@ export function CategoryNameForm({ initialName = '', submitLabel, onSubmit, onCa
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-wrap items-end gap-2">
       <div className="min-w-48 flex-1">
-        <FormField label={initialName ? 'Novo nome' : 'Nome da categoria'} error={error}>
+        <Field label={initialName ? 'Novo nome' : 'Nome da categoria'} error={error}>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={80}
-            className={INPUT_CLASS}
+            className={inputClass}
           />
-        </FormField>
+        </Field>
       </div>
       <Button type="submit" disabled={submitting}>
         {submitting ? 'Salvando...' : submitLabel}

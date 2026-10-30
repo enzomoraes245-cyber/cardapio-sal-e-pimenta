@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
-import { Button } from '../../../../components/ui/Button.jsx';
-import { FormFeedback } from '../../../../components/ui/FormFeedback.jsx';
-import { INPUT_CLASS } from '../../../../components/ui/FormField.jsx';
+import { Button } from '../../../../components/admin/Button.jsx';
+import { FormFeedback } from '../../../../components/admin/Alert.jsx';
+import { inputClass } from '../../../../components/admin/Field.jsx';
 import { Spinner } from '../../../../components/ui/Spinner.jsx';
 import { StatusMessage } from '../../../../components/ui/StatusMessage.jsx';
 import { useResource } from '../../../../hooks/useResource.js';
@@ -65,7 +65,7 @@ export function InvoicesPage() {
             type="month"
             value={month}
             onChange={(event) => setMonth(event.target.value)}
-            className={`${INPUT_CLASS} w-auto`}
+            className={`${inputClass} w-auto`}
           />
         </label>
         <Button disabled={generation.submitting || !month} onClick={handleGenerate}>

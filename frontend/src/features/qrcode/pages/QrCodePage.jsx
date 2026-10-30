@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button } from '../../../components/ui/Button.jsx';
+import { Button } from '../../../components/admin/Button.jsx';
 import { Spinner } from '../../../components/ui/Spinner.jsx';
 import { StatusMessage } from '../../../components/ui/StatusMessage.jsx';
 import { useResource } from '../../../hooks/useResource.js';

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Button } from '../../../../components/ui/Button.jsx';
-import { Card } from '../../../../components/ui/Card.jsx';
-import { FormFeedback } from '../../../../components/ui/FormFeedback.jsx';
-import { FormField, INPUT_CLASS } from '../../../../components/ui/FormField.jsx';
+import { Button } from '../../../../components/admin/Button.jsx';
+import { Panel } from '../../../../components/admin/Panel.jsx';
+import { FormFeedback } from '../../../../components/admin/Alert.jsx';
+import { Field, inputClass } from '../../../../components/admin/Field.jsx';
 import { useSubmit } from '../../../../hooks/useSubmit.js';
 import { slugify } from '../../../../utils/slugify.js';
 import { apiValidationErrors, validateForm } from '../../../../utils/validate-form.js';
@@ -37,7 +37,7 @@ export function NewRestaurantPage() {
   const bind = (path) => ({
     value: path.split('.').reduce((object, key) => object[key], values),
     onChange: (event) => set(path, event.target.value),
-    className: INPUT_CLASS,
+    className: inputClass,
   });
 
   function handleNameChange(event) {
@@ -72,12 +72,12 @@ export function NewRestaurantPage() {
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
-        <Card title="Restaurante">
+        <Panel title="Restaurante">
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField label="Nome" error={errorFor('name')}>
+            <Field label="Nome" error={errorFor('name')}>
               <input {...bind('name')} onChange={handleNameChange} maxLength={120} />
-            </FormField>
-            <FormField
+            </Field>
+            <Field
               label="Endereço do cardápio"
               hint={`/cardapio/${values.slug || '...'} — não pode ser alterado depois.`}
               error={errorFor('slug')}
@@ -90,53 +90,53 @@ export function NewRestaurantPage() {
                 }}
                 maxLength={80}
               />
-            </FormField>
+            </Field>
           </div>
-        </Card>
+        </Panel>
 
-        <Card title="Primeiro administrador" description="Acesso à retaguarda do restaurante.">
+        <Panel title="Primeiro administrador" description="Acesso à retaguarda do restaurante.">
           <div className="grid gap-5 sm:grid-cols-3">
-            <FormField label="Nome" error={errorFor('admin.name')}>
+            <Field label="Nome" error={errorFor('admin.name')}>
               <input {...bind('admin.name')} maxLength={120} />
-            </FormField>
-            <FormField label="E-mail" error={errorFor('admin.email')}>
+            </Field>
+            <Field label="E-mail" error={errorFor('admin.email')}>
               <input type="email" autoComplete="off" {...bind('admin.email')} />
-            </FormField>
-            <FormField
+            </Field>
+            <Field
               label="Senha inicial"
               hint="Mínimo de 8 caracteres."
               error={errorFor('admin.password')}
             >
               <input type="password" autoComplete="new-password" {...bind('admin.password')} />
-            </FormField>
+            </Field>
           </div>
-        </Card>
+        </Panel>
 
-        <Card
+        <Panel
           title="Assinatura"
           description="Cobrança manual: as faturas são geradas no backoffice."
         >
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField
+            <Field
               label="Mensalidade (R$)"
               hint="Ex.: 99,90"
               error={errorFor('subscription.monthlyAmount')}
             >
               <input inputMode="decimal" {...bind('subscription.monthlyAmount')} />
-            </FormField>
-            <FormField
+            </Field>
+            <Field
               label="Dia de vencimento"
               hint="Entre 1 e 28."
               error={errorFor('subscription.dueDay')}
             >
               <input type="number" min={1} max={28} {...bind('subscription.dueDay')} />
-            </FormField>
+            </Field>
           </div>
-        </Card>
+        </Panel>
 
-        <Card title="Módulos liberados">
+        <Panel title="Módulos liberados">
           <FeatureCheckboxes value={values.features} onChange={(value) => set('features', value)} />
-        </Card>
+        </Panel>
 
         <FormFeedback feedback={feedback} />
         <Button type="submit" disabled={submitting}>

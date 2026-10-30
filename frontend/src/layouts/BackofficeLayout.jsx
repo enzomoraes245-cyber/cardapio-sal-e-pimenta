@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router';
-import { Button } from '../components/ui/Button.jsx';
+import { Button } from '../components/admin/Button.jsx';
 import { useSession } from '../features/auth/hooks/useSession.js';
 
 const NAV_ITEMS = [

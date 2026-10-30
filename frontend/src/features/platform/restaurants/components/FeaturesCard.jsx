@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Button } from '../../../../components/ui/Button.jsx';
-import { Card } from '../../../../components/ui/Card.jsx';
-import { FormFeedback } from '../../../../components/ui/FormFeedback.jsx';
+import { Button } from '../../../../components/admin/Button.jsx';
+import { Panel } from '../../../../components/admin/Panel.jsx';
+import { FormFeedback } from '../../../../components/admin/Alert.jsx';
 import { useSubmit } from '../../../../hooks/useSubmit.js';
 import { updateFeatures } from '../services/platform-restaurants.service.js';
 import { FeatureCheckboxes } from './FeatureCheckboxes.jsx';
@@ -12,7 +12,7 @@ export function FeaturesCard({ restaurant, onUpdated }) {
   const { submitting, feedback, run } = useSubmit();
 
   return (
-    <Card
+    <Panel
       title="Módulos"
       description="Alterações valem na hora, inclusive para cardápios já abertos."
     >
@@ -29,6 +29,6 @@ export function FeaturesCard({ restaurant, onUpdated }) {
       >
         Salvar módulos
       </Button>
-    </Card>
+    </Panel>
   );
 }

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Button } from '../../../components/ui/Button.jsx';
-import { FormField, INPUT_CLASS } from '../../../components/ui/FormField.jsx';
-import { ImageInput } from '../../../components/ui/ImageInput.jsx';
+import { Button } from '../../../components/admin/Button.jsx';
+import { Field, inputClass } from '../../../components/admin/Field.jsx';
+import { ImageInput } from '../../../components/admin/ImageInput.jsx';
 import { apiValidationErrors, validateForm } from '../../../utils/validate-form.js';
 import { formatMoneyInput } from '../../../utils/money-input.js';
 import { productSchema } from '../validators/product.schema.js';
@@ -72,16 +72,16 @@ export function ProductForm({ product, categories, submitLabel, onSubmit }) {
 
       <div className="grid gap-5 md:grid-cols-[1fr_16rem]">
         <div className="space-y-5">
-          <FormField label="Nome *" error={errors.name}>
-            <input maxLength={120} className={INPUT_CLASS} {...bindInput('name')} />
-          </FormField>
+          <Field label="Nome *" error={errors.name}>
+            <input maxLength={120} className={inputClass} {...bindInput('name')} />
+          </Field>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <FormField label="Preço (R$) *" hint="Ex.: 24,90" error={errors.price}>
-              <input inputMode="decimal" className={INPUT_CLASS} {...bindInput('price')} />
-            </FormField>
-            <FormField label="Categoria *" error={errors.categoryId}>
-              <select className={INPUT_CLASS} {...bindInput('categoryId')}>
+            <Field label="Preço (R$) *" hint="Ex.: 24,90" error={errors.price}>
+              <input inputMode="decimal" className={inputClass} {...bindInput('price')} />
+            </Field>
+            <Field label="Categoria *" error={errors.categoryId}>
+              <select className={inputClass} {...bindInput('categoryId')}>
                 <option value="">Selecione...</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -89,18 +89,18 @@ export function ProductForm({ product, categories, submitLabel, onSubmit }) {
                   </option>
                 ))}
               </select>
-            </FormField>
+            </Field>
           </div>
 
-          <FormField
+          <Field
             label="Descrição curta"
             hint="Aparece na listagem do cardápio."
             error={errors.shortDescription}
           >
-            <input maxLength={300} className={INPUT_CLASS} {...bindInput('shortDescription')} />
-          </FormField>
+            <input maxLength={300} className={inputClass} {...bindInput('shortDescription')} />
+          </Field>
 
-          <FormField
+          <Field
             label="Descrição detalhada"
             hint="Aparece ao abrir os detalhes do produto."
             error={errors.detailedDescription}
@@ -108,10 +108,10 @@ export function ProductForm({ product, categories, submitLabel, onSubmit }) {
             <textarea
               rows={4}
               maxLength={2000}
-              className={INPUT_CLASS}
+              className={inputClass}
               {...bindInput('detailedDescription')}
             />
-          </FormField>
+          </Field>
 
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium text-slate-800">Situação</legend>

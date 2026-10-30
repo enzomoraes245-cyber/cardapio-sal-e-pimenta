@@ -14,9 +14,12 @@ export function validateForm(schema, values) {
   return { data: null, errors };
 }
 
-/** Converte os detalhes de um VALIDATION_ERROR da API em erros por campo. */
+/**
+ * Converte os detalhes de um erro da API em erros por campo. Vale para VALIDATION_ERROR e para
+ * conflitos que apontam o campo (ex.: SLUG_TAKEN em "slug", EMAIL_TAKEN em "admin.email").
+ */
 export function apiValidationErrors(error) {
-  if (error?.code !== 'VALIDATION_ERROR' || !Array.isArray(error.details)) return null;
+  if (!Array.isArray(error?.details)) return null;
   const errors = {};
   for (const detail of error.details) {
     if (detail.path) errors[detail.path] ??= detail.message;

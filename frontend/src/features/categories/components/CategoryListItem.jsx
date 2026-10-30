@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button } from '../../../components/ui/Button.jsx';
-import { ReorderButtons } from '../../../components/ui/ReorderButtons.jsx';
+import { Button } from '../../../components/admin/Button.jsx';
+import { ReorderButtons } from '../../../components/admin/ReorderButtons.jsx';
 import { CategoryNameForm } from './CategoryNameForm.jsx';
 
 export function CategoryListItem({ category, isFirst, isLast, reordering, onRename, onMove }) {

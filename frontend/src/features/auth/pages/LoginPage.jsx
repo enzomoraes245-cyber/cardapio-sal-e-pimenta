@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
-import { Button } from '../../../components/ui/Button.jsx';
-import { FormField, INPUT_CLASS } from '../../../components/ui/FormField.jsx';
+import { Button } from '../../../components/admin/Button.jsx';
+import { Field, inputClass } from '../../../components/admin/Field.jsx';
 import { validateForm } from '../../../utils/validate-form.js';
 import { useSession } from '../hooks/useSession.js';
 import { loginSchema } from '../validators/login.schema.js';
@@ -72,14 +72,14 @@ export function LoginPage({
         )}
 
         {devLogins.length > 0 && (
-          <FormField label="Usuário de teste">
+          <Field label="Usuário de teste">
             <select
               value={values.email}
               onChange={(event) => {
                 const account = devLogins.find((item) => item.email === event.target.value);
                 if (account) setValues({ email: account.email, password: account.password });
               }}
-              className={INPUT_CLASS}
+              className={inputClass}
             >
               {devLogins.map((account) => (
                 <option key={account.email} value={account.email}>
@@ -87,28 +87,28 @@ export function LoginPage({
                 </option>
               ))}
             </select>
-          </FormField>
+          </Field>
         )}
 
-        <FormField label="E-mail" error={errors.email}>
+        <Field label="E-mail" error={errors.email}>
           <input
             type="email"
             autoComplete="username"
             value={values.email}
             onChange={updateField('email')}
-            className={INPUT_CLASS}
+            className={inputClass}
           />
-        </FormField>
+        </Field>
 
-        <FormField label="Senha" error={errors.password}>
+        <Field label="Senha" error={errors.password}>
           <input
             type="password"
             autoComplete="current-password"
             value={values.password}
             onChange={updateField('password')}
-            className={INPUT_CLASS}
+            className={inputClass}
           />
-        </FormField>
+        </Field>
 
         <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? 'Entrando...' : 'Entrar'}

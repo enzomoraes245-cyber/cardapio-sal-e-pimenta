@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Button } from '../../../../components/ui/Button.jsx';
-import { Card } from '../../../../components/ui/Card.jsx';
-import { FormFeedback } from '../../../../components/ui/FormFeedback.jsx';
-import { FormField, INPUT_CLASS } from '../../../../components/ui/FormField.jsx';
+import { Button } from '../../../../components/admin/Button.jsx';
+import { Panel } from '../../../../components/admin/Panel.jsx';
+import { FormFeedback } from '../../../../components/admin/Alert.jsx';
+import { Field, inputClass } from '../../../../components/admin/Field.jsx';
 import { useSubmit } from '../../../../hooks/useSubmit.js';
 import { formatDateTime } from '../../../../utils/format-date.js';
 import {
@@ -33,7 +33,7 @@ export function SuspensionCard({ restaurant, onUpdated }) {
 
   if (suspended) {
     return (
-      <Card title="Situação: suspenso">
+      <Panel title="Situação: suspenso">
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
           <p>
             <span className="font-medium">Motivo:</span> {restaurant.suspensionReason}
@@ -58,24 +58,24 @@ export function SuspensionCard({ restaurant, onUpdated }) {
         >
           Reativar restaurante
         </Button>
-      </Card>
+      </Panel>
     );
   }
 
   return (
-    <Card
+    <Panel
       title="Situação: ativo"
       description="Suspender bloqueia a retaguarda e exibe “temporariamente indisponível” no cardápio."
     >
-      <FormField label="Motivo da suspensão">
+      <Field label="Motivo da suspensão">
         <textarea
           rows={2}
           maxLength={300}
           value={reason}
           onChange={(event) => setReason(event.target.value)}
-          className={INPUT_CLASS}
+          className={inputClass}
         />
-      </FormField>
+      </Field>
       <FormFeedback feedback={feedback} />
       {confirming ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -92,6 +92,6 @@ export function SuspensionCard({ restaurant, onUpdated }) {
           Suspender restaurante
         </Button>
       )}
-    </Card>
+    </Panel>
   );
 }

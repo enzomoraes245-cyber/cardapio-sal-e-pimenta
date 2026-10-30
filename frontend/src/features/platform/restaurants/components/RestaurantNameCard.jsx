@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Button } from '../../../../components/ui/Button.jsx';
-import { Card } from '../../../../components/ui/Card.jsx';
-import { FormFeedback } from '../../../../components/ui/FormFeedback.jsx';
-import { FormField, INPUT_CLASS } from '../../../../components/ui/FormField.jsx';
+import { Button } from '../../../../components/admin/Button.jsx';
+import { Panel } from '../../../../components/admin/Panel.jsx';
+import { FormFeedback } from '../../../../components/admin/Alert.jsx';
+import { Field, inputClass } from '../../../../components/admin/Field.jsx';
 import { useSubmit } from '../../../../hooks/useSubmit.js';
 import { renameRestaurant } from '../services/platform-restaurants.service.js';
 
@@ -21,21 +21,21 @@ export function RestaurantNameCard({ restaurant, onUpdated }) {
   }
 
   return (
-    <Card title="Dados" description={`Endereço do cardápio: /cardapio/${restaurant.slug} (fixo).`}>
+    <Panel title="Dados" description={`Endereço do cardápio: /cardapio/${restaurant.slug} (fixo).`}>
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
-        <FormField label="Nome do restaurante">
+        <Field label="Nome do restaurante">
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={120}
-            className={INPUT_CLASS}
+            className={inputClass}
           />
-        </FormField>
+        </Field>
         <FormFeedback feedback={feedback} />
         <Button type="submit" disabled={submitting}>
           Salvar nome
         </Button>
       </form>
-    </Card>
+    </Panel>
   );
 }

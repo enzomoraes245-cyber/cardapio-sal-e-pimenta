@@ -35,3 +35,48 @@
     @apply bg-stone-50 text-stone-900 antialiased;
   }
 }
+
+/*
+ * Tokens das áreas administrativas (painel do restaurante, backoffice e login).
+ * Todos usam o prefixo "admin" e são aplicados só dentro dessas telas: nenhum deles é usado pelo
+ * cardápio público, que depende apenas dos tokens e da camada base acima (não alterados).
+ */
+@theme {
+  --font-admin: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-admin-display: 'Playfair Display', Georgia, serif;
+
+  --color-admin-canvas: #f7f6f3;
+  --color-admin-surface: #ffffff;
+  --color-admin-subtle: #fbfaf8;
+  --color-admin-line: #e8e5e0;
+  --color-admin-line-strong: #d7d3cc;
+  --color-admin-text: #1c1917;
+  --color-admin-muted: #57534e;
+  --color-admin-faint: #6b6560;
+
+  --color-admin-sidebar: #1c1917;
+  --color-admin-sidebar-raised: #292524;
+  --color-admin-sidebar-text: #e7e5e4;
+  --color-admin-sidebar-muted: #a8a29e;
+
+  --color-admin-accent: #9a3412;
+  --color-admin-accent-hover: #7c2d12;
+  --color-admin-accent-soft: #fff4ed;
+
+  --color-admin-success: #15803d;
+  --color-admin-success-soft: #f0fdf4;
+  --color-admin-warning: #b45309;
+  --color-admin-warning-soft: #fffbeb;
+  --color-admin-danger: #b91c1c;
+  --color-admin-danger-hover: #991b1b;
+  --color-admin-danger-soft: #fef2f2;
+  --color-admin-neutral: #44403c;
+  --color-admin-neutral-soft: #f5f5f4;
+
+  --radius-admin-control: 0.5rem;
+  --radius-admin-panel: 0.75rem;
+  --radius-admin-dialog: 1rem;
+
+  --shadow-admin-raise: 0 1px 2px 0 rgb(28 25 23 / 0.05);
+  --shadow-admin-float: 0 16px 40px -12px rgb(28 25 23 / 0.28), 0 2px 6px 0 rgb(28 25 23 / 0.06);
+}

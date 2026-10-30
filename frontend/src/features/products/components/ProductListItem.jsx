@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { ReorderButtons } from '../../../components/ui/ReorderButtons.jsx';
+import { ReorderButtons } from '../../../components/admin/ReorderButtons.jsx';
 import { formatPrice } from '../../../utils/format-currency.js';
 
 /** Linha de produto na retaguarda. `statusControls` é renderizado ao lado (MOD-04). */

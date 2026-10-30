@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Card } from '../../../../components/ui/Card.jsx';
+import { Panel } from '../../../../components/admin/Panel.jsx';
 import { Spinner } from '../../../../components/ui/Spinner.jsx';
 import { useResource } from '../../../../hooks/useResource.js';
 import { useInvoiceStatus } from '../hooks/useInvoiceStatus.js';
@@ -23,7 +23,7 @@ export function RestaurantInvoicesCard({ restaurantId, onInvoiceChanged }) {
   const invoiceStatus = useInvoiceStatus({ onUpdated: handleUpdated });
 
   return (
-    <Card title="Faturas" description="Geradas mensalmente na página Faturas.">
+    <Panel title="Faturas" description="Geradas mensalmente na página Faturas.">
       {status === 'loading' && <Spinner />}
       {status === 'error' && <p className="text-sm text-red-700">{error.message}</p>}
       {status === 'success' && data.length === 0 && (
@@ -42,6 +42,6 @@ export function RestaurantInvoicesCard({ restaurantId, onInvoiceChanged }) {
           onChangeStatus={invoiceStatus.changeStatus}
         />
       )}
-    </Card>
+    </Panel>
   );
 }

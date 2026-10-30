@@ -1,4 +1,4 @@
-import { Button } from '../../../../components/ui/Button.jsx';
+import { Button } from '../../../../components/admin/Button.jsx';
 import { formatPrice } from '../../../../utils/format-currency.js';
 import { formatDate, formatMonth } from '../../../../utils/format-date.js';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge.jsx';

@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { INPUT_CLASS } from '../../../components/ui/FormField.jsx';
+import { inputClass } from '../../../components/admin/Field.jsx';
 
 /** Seletor de cor com campo de texto #RRGGBB sincronizado. */
 export function ColorField({ label, hint, value, onChange, error }) {
@@ -24,7 +24,7 @@ export function ColorField({ label, hint, value, onChange, error }) {
           maxLength={7}
           aria-invalid={error ? true : undefined}
           aria-describedby={`${id}-hint`}
-          className={`${INPUT_CLASS} max-w-32 font-mono`}
+          className={`${inputClass} max-w-32 font-mono`}
         />
       </div>
       <p id={`${id}-hint`} className="text-xs text-slate-500">
