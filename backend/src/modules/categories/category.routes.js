@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { validate } from '../../middlewares/validate.middleware.js';
 import { idParamsSchema, orderBodySchema } from '../../shared/utils/common-schemas.js';
 import * as categoryController from './category.controller.js';
-import { categoryBodySchema } from './category.validator.js';
+import { categoryBodySchema, categoryStatusBodySchema } from './category.validator.js';
 
 /** Categorias do restaurante autenticado. Montadas em /api/v1/admin/categories. */
 export const categoryRoutes = Router();
@@ -15,4 +15,9 @@ categoryRoutes.patch(
   '/:id',
   validate({ params: idParamsSchema, body: categoryBodySchema }),
   categoryController.rename,
+);
+categoryRoutes.patch(
+  '/:id/status',
+  validate({ params: idParamsSchema, body: categoryStatusBodySchema }),
+  categoryController.updateStatus,
 );

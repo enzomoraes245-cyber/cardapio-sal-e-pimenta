@@ -32,27 +32,20 @@ const sendLogo = (tenant, image) =>
     .attach('logo', image, 'logo.png');
 
 describe('personalização (MOD-10)', () => {
-  it('altera nome e cores só do próprio restaurante e avisa os cardápios abertos', async () => {
+  it('altera as cores só do próprio restaurante e avisa os cardápios abertos', async () => {
     const events = [];
     const unsubscribe = subscribeToMenuUpdates(tenantA.restaurant.id, (e) => events.push(e));
 
     const response = await request(app)
       .patch('/api/v1/admin/customization')
       .set('Cookie', tenantA.cookie)
-      .send({ name: 'Sal e Pimenta', primaryColor: '#1E3A8A', secondaryColor: null });
+      .send({ primaryColor: '#1E3A8A', secondaryColor: null });
     unsubscribe();
 
     expect(response.status).toBe(200);
-    expect(response.body.data).toMatchObject({
-      name: 'Sal e Pimenta',
-      primaryColor: '#1e3a8a',
-      secondaryColor: null,
-    });
+    expect(response.body.data).toMatchObject({ primaryColor: '#1e3a8a', secondaryColor: null });
     expect(events).toHaveLength(1);
-    expect(await publicRestaurant(tenantA)).toMatchObject({
-      name: 'Sal e Pimenta',
-      primaryColor: '#1e3a8a',
-    });
+    expect(await publicRestaurant(tenantA)).toMatchObject({ primaryColor: '#1e3a8a' });
     // RF-040 / RN-015: o outro restaurante não é afetado.
     expect(await publicRestaurant(tenantB)).toMatchObject({
       name: 'Restaurante pers-b',
@@ -60,14 +53,24 @@ describe('personalização (MOD-10)', () => {
     });
   });
 
-  it('valida nome e formato das cores', async () => {
+  it('o nome não é alterado pela personalização (fica em Dados do estabelecimento)', async () => {
     const response = await request(app)
       .patch('/api/v1/admin/customization')
       .set('Cookie', tenantA.cookie)
-      .send({ name: '', primaryColor: 'azul' });
+      .send({ name: 'Outro nome', primaryColor: '#123123' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.name).toBe('Restaurante pers-a');
+  });
+
+  it('valida o formato das cores', async () => {
+    const response = await request(app)
+      .patch('/api/v1/admin/customization')
+      .set('Cookie', tenantA.cookie)
+      .send({ primaryColor: 'azul' });
 
     expect(response.status).toBe(400);
-    expect(response.body.error.details.map((d) => d.path).sort()).toEqual(['name', 'primaryColor']);
+    expect(response.body.error.details.map((d) => d.path)).toEqual(['primaryColor']);
   });
 
   it('envia e substitui o logotipo exibido no cardápio (CA-032)', async () => {

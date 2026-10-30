@@ -13,10 +13,23 @@ export async function getMenu(req, res) {
  * A cada (re)conexão envia "ready", sinalizando ao cliente que deve recarregar o cardápio.
  */
 export async function streamMenuEvents(req, res) {
+  // O cliente pode desistir enquanto a inscrição consulta o banco. Sem este registro, a
+  // assinatura e o heartbeat da conexão já encerrada ficariam ativos para sempre.
+  let clientGone = false;
+  const markGone = () => {
+    clientGone = true;
+  };
+  res.on('close', markGone);
+
   let stream = null;
   const unsubscribe = await menuService.subscribeToPublicMenu(req.validated.params.slug, (event) =>
     stream?.send(event.type, event),
   );
+  res.off('close', markGone);
+  if (clientGone) {
+    unsubscribe();
+    return;
+  }
 
   stream = openSseStream(res);
   stream.onClose(unsubscribe);

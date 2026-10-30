@@ -20,6 +20,9 @@ model Restaurant {
   status           RestaurantStatus @default(ACTIVE)
   suspendedAt      DateTime?        @map("suspended_at") @db.Timestamptz(3)
   suspensionReason String?          @map("suspension_reason") @db.VarChar(300)
+  /// Contato do estabelecimento para a plataforma (uso interno; nunca aparece no cardápio).
+  contactPhone     String?          @map("contact_phone") @db.VarChar(20)
+  contactEmail     String?          @map("contact_email") @db.VarChar(254)
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -30,6 +33,8 @@ model Restaurant {
   features      RestaurantFeature[]
   subscription  Subscription?
   invoices      Invoice[]
+  payments      Payment[]
+  auditEvents   AuditEvent[]
 
   @@index([status])
   @@map("restaurants")
@@ -82,24 +87,79 @@ enum InvoiceStatus {
   CANCELED
 }
 
-/// Fatura mensal. "Vencida" = OPEN com due_date no passado (calculado, não gravado).
+/// Fatura mensal. "Vencida" = OPEN com due_date anterior a hoje no fuso do negócio (calculado,
+/// não gravado). Nunca é apagada: pagamento, estorno e cancelamento ficam registrados.
 model Invoice {
   id             String        @id @default(uuid()) @db.Uuid
   restaurantId   String        @map("restaurant_id") @db.Uuid
   /// Primeiro dia do mês de referência.
   referenceMonth DateTime      @map("reference_month") @db.Date
+  /// Valor copiado da assinatura na geração: alterar a mensalidade não muda faturas existentes.
   amount         Decimal       @db.Decimal(10, 2)
   dueDate        DateTime      @map("due_date") @db.Date
   status         InvoiceStatus @default(OPEN)
+  /// Quando o pagamento válido foi registrado (a data do pagamento fica em payments.paid_on).
   paidAt         DateTime?     @map("paid_at") @db.Timestamptz(3)
+  /// Cancelamento (só de fatura em aberto, com motivo). Reabrir limpa estes campos; o anterior
+  /// continua no histórico (audit_events).
+  canceledAt     DateTime?     @map("canceled_at") @db.Timestamptz(3)
+  canceledById   String?       @map("canceled_by_id") @db.Uuid
+  canceledByName String?       @map("canceled_by_name") @db.VarChar(120)
+  cancelReason   String?       @map("cancel_reason") @db.VarChar(300)
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  payments   Payment[]
 
   @@unique([restaurantId, referenceMonth])
+  /// Alvo da FK composta de payments (pagamento e fatura do mesmo restaurante).
+  @@unique([id, restaurantId])
   @@index([status, dueDate])
   @@map("invoices")
+}
+
+enum PaymentMethod {
+  PIX
+  BOLETO
+  TRANSFER
+  CARD
+  CASH
+  OTHER
+}
+
+/// Pagamento de mensalidade registrado manualmente pela plataforma (sem gateway). Nunca é
+/// apagado: o estorno marca o registro (com autor e motivo) e a fatura volta a ficar em aberto.
+model Payment {
+  id              String         @id @default(uuid()) @db.Uuid
+  invoiceId       String         @map("invoice_id") @db.Uuid
+  restaurantId    String         @map("restaurant_id") @db.Uuid
+  /// Igual a invoice_id enquanto o pagamento vale; NULL depois do estorno. O índice único garante
+  /// no máximo um pagamento válido por fatura (o Prisma não representa índice parcial).
+  activeInvoiceId String?        @unique @map("active_invoice_id") @db.Uuid
+  /// Sempre o valor da fatura (não há pagamento parcial, juros ou desconto).
+  amount          Decimal        @db.Decimal(10, 2)
+  /// Data em que o valor foi recebido, informada pelo operador.
+  paidOn          DateTime       @map("paid_on") @db.Date
+  /// NULL só nas baixas anteriores ao controle de pagamentos (forma não registrada).
+  method          PaymentMethod?
+  notes           String?        @db.VarChar(300)
+  /// Operador que registrou (sem FK, como no histórico). NULL nas baixas migradas.
+  recordedById    String?        @map("recorded_by_id") @db.Uuid
+  recordedByName  String?        @map("recorded_by_name") @db.VarChar(120)
+  recordedAt      DateTime       @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  voidedAt        DateTime?      @map("voided_at") @db.Timestamptz(3)
+  voidedById      String?        @map("voided_by_id") @db.Uuid
+  voidedByName    String?        @map("voided_by_name") @db.VarChar(120)
+  voidReason      String?        @map("void_reason") @db.VarChar(300)
+
+  invoice    Invoice    @relation(fields: [invoiceId, restaurantId], references: [id, restaurantId], onDelete: Restrict)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([restaurantId, paidOn])
+  @@index([paidOn])
+  @@map("payments")
 }
 
 /// Operador do backoffice da plataforma. Não pertence a nenhum restaurante.
@@ -111,7 +171,8 @@ model PlatformAdmin {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  sessions PlatformSession[]
+  sessions            PlatformSession[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("platform_admins")
 }
@@ -132,17 +193,20 @@ model PlatformSession {
 
 /// Usuário da retaguarda. Pertence a um único restaurante.
 model AdminUser {
-  id           String   @id @default(uuid()) @db.Uuid
-  restaurantId String   @map("restaurant_id") @db.Uuid
-  name         String   @db.VarChar(120)
+  id           String    @id @default(uuid()) @db.Uuid
+  restaurantId String    @map("restaurant_id") @db.Uuid
+  name         String    @db.VarChar(120)
   /// Único globalmente: o login identifica o restaurante a partir do usuário.
-  email        String   @unique @db.VarChar(254)
-  passwordHash String   @map("password_hash") @db.VarChar(255)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  email        String    @unique @db.VarChar(254)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  /// Acesso bloqueado pelo backoffice: não entra na retaguarda até ser desbloqueado.
+  disabledAt   DateTime? @map("disabled_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  restaurant Restaurant     @relation(fields: [restaurantId], references: [id])
-  sessions   AdminSession[]
+  restaurant          Restaurant           @relation(fields: [restaurantId], references: [id])
+  sessions            AdminSession[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([restaurantId])
   @@map("admin_users")
@@ -169,6 +233,8 @@ model Category {
   name         String   @db.VarChar(80)
   /// Ordem de exibição no cardápio (crescente).
   position     Int      @default(0)
+  /// Categoria oculta: ela e seus produtos saem do cardápio público; nada é apagado.
+  isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -225,4 +291,69 @@ model RestaurantCustomization {
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@map("restaurant_customizations")
+}
+
+/// Pedido de redefinição de senha por e-mail. Só o hash do token fica no banco; uso único.
+/// Pertence a um administrador de restaurante OU a um operador do backoffice (CHECK no banco).
+model PasswordResetToken {
+  id              String    @id @default(uuid()) @db.Uuid
+  adminUserId     String?   @map("admin_user_id") @db.Uuid
+  platformAdminId String?   @map("platform_admin_id") @db.Uuid
+  tokenHash       String    @unique @map("token_hash") @db.Char(64)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt          DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  adminUser     AdminUser?     @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  platformAdmin PlatformAdmin? @relation(fields: [platformAdminId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([platformAdminId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+enum AuditActorType {
+  PLATFORM_ADMIN
+  RESTAURANT_ADMIN
+  SYSTEM
+}
+
+/// Histórico de ações relevantes: autor, data/hora, motivo e detalhes (antes/depois).
+/// Gravado na mesma transação da alteração; a aplicação nunca altera nem apaga registros.
+model AuditEvent {
+  id           String         @id @default(uuid()) @db.Uuid
+  occurredAt   DateTime       @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  actorType    AuditActorType @map("actor_type")
+  /// Operador ou administrador autor da ação (sem FK: pode vir de duas tabelas).
+  actorId      String?        @map("actor_id") @db.Uuid
+  /// Nome do autor no momento da ação, para o histórico continuar legível.
+  actorName    String?        @map("actor_name") @db.VarChar(120)
+  restaurantId String?        @map("restaurant_id") @db.Uuid
+  action       String         @db.VarChar(60)
+  entityType   String?        @map("entity_type") @db.VarChar(40)
+  entityId     String?        @map("entity_id") @db.Uuid
+  reason       String?        @db.VarChar(300)
+  metadata     Json?
+
+  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+
+  @@index([restaurantId, occurredAt(sort: Desc)])
+  @@index([occurredAt(sort: Desc)])
+  @@map("audit_events")
+}
+
+/// Chave de idempotência de um cadastro (cabeçalho Idempotency-Key): repetir o envio com a mesma
+/// chave devolve o registro já criado em vez de duplicá-lo. Removida depois de 24 h.
+model IdempotencyKey {
+  scope      String   @db.VarChar(60)
+  /// Restaurante (painel) ou operador (backoffice) que fez o cadastro.
+  ownerId    String   @map("owner_id") @db.Uuid
+  key        String   @db.VarChar(100)
+  resourceId String?  @map("resource_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@id([scope, ownerId, key])
+  @@index([createdAt])
+  @@map("idempotency_keys")
 }

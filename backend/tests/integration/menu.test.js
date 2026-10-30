@@ -1,8 +1,9 @@
-import { once } from 'node:events';
+import { EventEmitter, once } from 'node:events';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { prisma } from '../../src/config/database.js';
+import { streamMenuEvents } from '../../src/modules/menu/menu.controller.js';
 import { countMenuSubscribers, publishMenuUpdated } from '../../src/shared/events/menu-events.js';
 import { createRestaurantFixture, deleteRestaurantFixtures } from './helpers/fixtures.js';
 
@@ -132,6 +133,55 @@ describe('GET /api/v1/public/restaurants/:slug/events (SSE)', () => {
 
     expect(response.status).toBe(404);
     expect(response.headers.get('content-type')).toContain('application/json');
+  });
+
+  it('sem atualização automática, recusa o restaurante ativo e aceita o suspenso', async () => {
+    const restaurantId = fixtureB.restaurant.id;
+    const url = `${baseUrl}/public/restaurants/${fixtureB.restaurant.slug}/events`;
+    await prisma.restaurantFeature.create({
+      data: { restaurantId, feature: 'REALTIME', enabled: false },
+    });
+    try {
+      const active = await fetch(url);
+      expect(active.status).toBe(403);
+
+      // Suspenso: a conexão fica aberta para a reativação chegar ao cardápio aberto.
+      await prisma.restaurant.update({
+        where: { id: restaurantId },
+        data: { status: 'SUSPENDED' },
+      });
+      const stream = await openEventStream(url);
+      try {
+        expect(stream.response.status).toBe(200);
+        await stream.waitFor('ready');
+        expect(countMenuSubscribers(restaurantId)).toBe(1);
+      } finally {
+        stream.close();
+      }
+      await waitUntil(() => countMenuSubscribers(restaurantId) === 0);
+    } finally {
+      await prisma.restaurant.update({ where: { id: restaurantId }, data: { status: 'ACTIVE' } });
+      await prisma.restaurantFeature.deleteMany({ where: { restaurantId } });
+    }
+  });
+
+  it('não deixa assinatura nem heartbeat se o cliente desiste durante a inscrição', async () => {
+    const res = Object.assign(new EventEmitter(), {
+      status: vi.fn().mockReturnThis(),
+      set: vi.fn().mockReturnThis(),
+      flushHeaders: vi.fn(),
+      write: vi.fn(),
+    });
+    const req = { validated: { params: { slug: fixtureA.restaurant.slug } } };
+
+    const pending = streamMenuEvents(req, res);
+    // A conexão cai enquanto a inscrição ainda consulta o banco.
+    res.emit('close');
+    await pending;
+
+    expect(countMenuSubscribers(fixtureA.restaurant.id)).toBe(0);
+    expect(res.flushHeaders).not.toHaveBeenCalled();
+    expect(res.write).not.toHaveBeenCalled();
   });
 });
 

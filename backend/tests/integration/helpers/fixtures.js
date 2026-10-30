@@ -4,7 +4,7 @@ import { deleteRestaurantFolder } from '../../../src/shared/utils/file-storage.j
 
 /**
  * Cria um restaurante isolado para testes, com uma categoria e produtos.
- * O slug é único por execução, então os testes não interferem nos dados de desenvolvimento.
+ * O slug é único por execução; os testes rodam no banco exclusivo de testes (TEST_DATABASE_URL).
  */
 export async function createRestaurantFixture(label) {
   const slug = `test-${label}-${randomUUID().slice(0, 8)}`;
@@ -32,8 +32,15 @@ export async function createRestaurantFixture(label) {
   return { restaurant, category };
 }
 
+/**
+ * Remove os restaurantes de teste e tudo o que pertence a eles. A aplicação preserva o histórico
+ * (FK RESTRICT); a limpeza só acontece aqui, no banco exclusivo de testes.
+ */
 export async function deleteRestaurantFixtures(restaurantIds) {
   const where = { restaurantId: { in: restaurantIds } };
+  await prisma.auditEvent.deleteMany({ where });
+  await prisma.payment.deleteMany({ where });
+  await prisma.invoice.deleteMany({ where });
   await prisma.product.deleteMany({ where });
   await prisma.category.deleteMany({ where });
   await prisma.adminUser.deleteMany({ where });

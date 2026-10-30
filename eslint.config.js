@@ -38,5 +38,38 @@ export default [
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
     },
   },
+  {
+    // O cardápio público (e o que ele importa) nunca depende da interface administrativa:
+    // o design das áreas administrativas não pode alcançá-lo, nem por componente compartilhado.
+    files: [
+      'frontend/src/features/menu/**/*.{js,jsx}',
+      'frontend/src/layouts/PublicMenuLayout.jsx',
+      'frontend/src/components/ui/**/*.{js,jsx}',
+      'frontend/src/components/shared/**/*.{js,jsx}',
+      'frontend/src/app/router.jsx',
+      'frontend/src/main.jsx',
+      'frontend/src/services/api.js',
+      'frontend/src/utils/format-currency.js',
+      'frontend/src/features/customization/utils/brand-style.js',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/components/admin/**',
+                '**/layouts/Admin*',
+                '**/layouts/Backoffice*',
+                '**/features/platform/**',
+              ],
+              message: 'O cardápio público não pode depender da interface administrativa.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   prettier,
 ];

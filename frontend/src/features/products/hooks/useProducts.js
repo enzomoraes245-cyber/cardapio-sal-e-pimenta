@@ -17,7 +17,6 @@ export function useProducts() {
   const resource = useResource(loadCatalog);
   const { data, setData } = resource;
   const [reordering, setReordering] = useState(false);
-  const [actionError, setActionError] = useState(null);
 
   const groups = useMemo(() => {
     if (!data) return [];
@@ -36,11 +35,14 @@ export function useProducts() {
     [setData],
   );
 
-  /** Move o produto dentro da categoria e salva; desfaz na tela se a API recusar. */
+  /**
+   * Move o produto dentro da categoria e salva; desfaz na tela se a API recusar.
+   * Devolve o erro (ou null) para quem chamou avisar o usuário.
+   */
   const move = useCallback(
     async (categoryId, products, index, offset) => {
       const reordered = moveItem(products, index, index + offset);
-      if (reordered === products) return;
+      if (reordered === products) return null;
       const previous = data;
       const applyOrder = (ordered) =>
         setData((current) => ({
@@ -48,7 +50,6 @@ export function useProducts() {
           products: [...current.products.filter((p) => p.category.id !== categoryId), ...ordered],
         }));
 
-      setActionError(null);
       setReordering(true);
       applyOrder(reordered);
       try {
@@ -58,9 +59,10 @@ export function useProducts() {
             reordered.map((p) => p.id),
           ),
         );
+        return null;
       } catch (error) {
         setData(previous);
-        setActionError(error.message);
+        return error;
       } finally {
         setReordering(false);
       }
@@ -68,5 +70,5 @@ export function useProducts() {
     [data, setData],
   );
 
-  return { ...resource, groups, reordering, actionError, setActionError, move, replaceProduct };
+  return { ...resource, groups, reordering, move, replaceProduct };
 }

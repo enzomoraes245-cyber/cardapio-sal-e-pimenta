@@ -1,36 +1,58 @@
 import { Navigate, Outlet, useLocation } from 'react-router';
-import { Spinner } from '../../../components/ui/Spinner.jsx';
-import { StatusMessage } from '../../../components/ui/StatusMessage.jsx';
+import { Alert } from '../../../components/admin/Alert.jsx';
+import { Button } from '../../../components/admin/Button.jsx';
+import { InlineSpinner } from '../../../components/admin/InlineSpinner.jsx';
+import { LogoutIcon, RefreshIcon } from '../../../components/admin/icons.jsx';
+import { RESTAURANT_AREA } from '../areas.js';
 import { useSession } from '../hooks/useSession.js';
+import { AuthLayout } from './AuthLayout.jsx';
 
-/** Protege as rotas autenticadas: sem sessão, redireciona para `loginPath` (RN-001). */
-export function RequireAuth({ loginPath }) {
+const BLOCKED_STATES = {
+  suspended: 'Acesso suspenso',
+  blocked: 'Acesso bloqueado',
+};
+
+/** Protege as rotas autenticadas: sem sessão, redireciona para o login da área (RN-001). */
+export function RequireAuth({ area = RESTAURANT_AREA }) {
   const { status, error, refresh, logout } = useSession();
   const location = useLocation();
 
-  if (status === 'loading') return <Spinner label="Verificando sessão..." />;
-  if (status === 'suspended') {
+  if (status === 'loading') {
     return (
-      <StatusMessage
-        tone="error"
-        title="Acesso suspenso"
-        description={error.message}
-        action={{ label: 'Sair', onClick: logout }}
-      />
+      <div
+        role="status"
+        className="flex min-h-dvh items-center justify-center gap-3 bg-admin-canvas font-admin text-sm text-admin-muted"
+      >
+        <InlineSpinner size={18} />
+        Verificando sessão...
+      </div>
     );
   }
+
+  if (BLOCKED_STATES[status]) {
+    return (
+      <AuthLayout area={area} title={BLOCKED_STATES[status]}>
+        <Alert tone="danger">{error.message}</Alert>
+        <Button variant="secondary" icon={LogoutIcon} onClick={logout}>
+          Sair
+        </Button>
+      </AuthLayout>
+    );
+  }
+
   if (status === 'error') {
     return (
-      <StatusMessage
-        tone="error"
-        title="Não foi possível verificar a sessão"
-        description="Verifique sua conexão e tente novamente."
-        action={{ label: 'Tentar novamente', onClick: refresh }}
-      />
+      <AuthLayout area={area} title="Não foi possível verificar a sessão">
+        <Alert tone="danger">Verifique sua conexão e tente novamente.</Alert>
+        <Button variant="secondary" icon={RefreshIcon} onClick={refresh}>
+          Tentar novamente
+        </Button>
+      </AuthLayout>
     );
   }
+
   if (status === 'anonymous') {
-    return <Navigate to={loginPath} replace state={{ from: location.pathname }} />;
+    return <Navigate to={area.loginPath} replace state={{ from: location.pathname }} />;
   }
   return <Outlet />;
 }

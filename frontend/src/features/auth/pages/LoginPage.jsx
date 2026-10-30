@@ -1,8 +1,13 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router';
-import { Button } from '../../../components/ui/Button.jsx';
-import { FormField, INPUT_CLASS } from '../../../components/ui/FormField.jsx';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router';
+import { Alert } from '../../../components/admin/Alert.jsx';
+import { Button } from '../../../components/admin/Button.jsx';
+import { Field, Select, TextInput } from '../../../components/admin/Field.jsx';
+import { PasswordInput } from '../../../components/admin/PasswordInput.jsx';
 import { validateForm } from '../../../utils/validate-form.js';
+import { RESTAURANT_AREA } from '../areas.js';
+import { AuthLayout } from '../components/AuthLayout.jsx';
+import { useRecoveryOptions } from '../hooks/useRecoveryOptions.js';
 import { useSession } from '../hooks/useSession.js';
 import { loginSchema } from '../validators/login.schema.js';
 
@@ -10,17 +15,23 @@ import { loginSchema } from '../validators/login.schema.js';
 // Contas de teste do seed, definidas pelo vite.config.js apenas em `vite dev` (vazio no build).
 const DEV_LOGINS = typeof __DEV_LOGINS__ === 'undefined' ? [] : __DEV_LOGINS__;
 
-/** Tela de login reutilizada pela retaguarda (/admin) e pelo backoffice (/backoffice). */
-export function LoginPage({
-  title = 'Retaguarda',
-  description = 'Entre para gerenciar o cardápio do seu restaurante.',
-  homePath = '/admin',
-  devArea = 'admin',
-}) {
+/** Títulos para erros de acesso que não são de credenciais. */
+const ERROR_TITLES = {
+  RESTAURANT_SUSPENDED: 'Acesso suspenso',
+  USER_DISABLED: 'Acesso bloqueado',
+  TOO_MANY_ATTEMPTS: 'Muitas tentativas',
+};
+
+const linkClass =
+  'rounded-sm font-medium text-admin-accent underline-offset-4 hover:text-admin-accent-hover hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-admin-accent';
+
+/** Tela de login da retaguarda (/admin) e do backoffice (/backoffice). */
+export function LoginPage({ area = RESTAURANT_AREA }) {
   const { status, login } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
-  const devLogins = DEV_LOGINS.filter((account) => account.area === devArea);
+  const recovery = useRecoveryOptions(area);
+  const devLogins = DEV_LOGINS.filter((account) => account.area === area.devArea);
   const [values, setValues] = useState(() => ({
     email: devLogins[0]?.email ?? '',
     password: devLogins[0]?.password ?? '',
@@ -29,6 +40,7 @@ export function LoginPage({
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const homePath = area.homePath;
   const redirectTo = location.state?.from?.startsWith(homePath) ? location.state.from : homePath;
   if (status === 'authenticated') return <Navigate to={redirectTo} replace />;
 
@@ -37,6 +49,7 @@ export function LoginPage({
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (submitting) return;
     setFormError(null);
     const { data, errors: fieldErrors } = validateForm(loginSchema, values);
     setErrors(fieldErrors ?? {});
@@ -47,73 +60,76 @@ export function LoginPage({
       await login(data);
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      setFormError(error.message);
-    } finally {
+      setFormError(error);
       setSubmitting(false);
     }
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-slate-50 px-4">
-      <form
-        onSubmit={handleSubmit}
-        noValidate
-        className="w-full max-w-sm space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
-      >
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-          <p className="text-sm text-slate-600">{description}</p>
-        </div>
-
+    <AuthLayout area={area} title={area.loginTitle} description={area.loginDescription}>
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         {formError && (
-          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
-            {formError}
-          </p>
+          <Alert tone="danger" title={ERROR_TITLES[formError.code]}>
+            {formError.message}
+          </Alert>
         )}
 
         {devLogins.length > 0 && (
-          <FormField label="Usuário de teste">
-            <select
+          <Field label="Usuário de teste" hint="Disponível só no ambiente de desenvolvimento.">
+            <Select
               value={values.email}
               onChange={(event) => {
                 const account = devLogins.find((item) => item.email === event.target.value);
                 if (account) setValues({ email: account.email, password: account.password });
               }}
-              className={INPUT_CLASS}
             >
               {devLogins.map((account) => (
                 <option key={account.email} value={account.email}>
                   {account.label}
                 </option>
               ))}
-            </select>
-          </FormField>
+            </Select>
+          </Field>
         )}
 
-        <FormField label="E-mail" error={errors.email}>
-          <input
+        <Field label="E-mail" error={errors.email}>
+          <TextInput
             type="email"
             autoComplete="username"
+            inputMode="email"
             value={values.email}
             onChange={updateField('email')}
-            className={INPUT_CLASS}
           />
-        </FormField>
+        </Field>
 
-        <FormField label="Senha" error={errors.password}>
-          <input
-            type="password"
+        <Field
+          label="Senha"
+          error={errors.password}
+          action={
+            recovery?.emailRecovery ? (
+              <Link to={area.forgotPath} className={`text-[13px] ${linkClass}`}>
+                Esqueci minha senha
+              </Link>
+            ) : null
+          }
+        >
+          <PasswordInput
             autoComplete="current-password"
             value={values.password}
             onChange={updateField('password')}
-            className={INPUT_CLASS}
           />
-        </FormField>
+        </Field>
 
-        <Button type="submit" disabled={submitting} className="w-full">
+        <Button type="submit" size="lg" block loading={submitting}>
           {submitting ? 'Entrando...' : 'Entrar'}
         </Button>
       </form>
-    </main>
+
+      {recovery && !recovery.emailRecovery && (
+        <p className="text-[13px] leading-relaxed text-admin-muted">
+          Esqueceu a senha? {area.supportHint}
+        </p>
+      )}
+    </AuthLayout>
   );
 }

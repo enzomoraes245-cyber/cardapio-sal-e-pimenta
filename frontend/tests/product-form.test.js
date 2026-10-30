@@ -26,38 +26,32 @@ describe('parseMoneyInput', () => {
   });
 });
 
-describe('productSchema (RN-004)', () => {
+describe('productSchema (foto opcional, DEC-007)', () => {
   const base = {
     name: 'Pudim',
     price: '14,90',
     categoryId: 'cat-1',
     shortDescription: '',
     detailedDescription: '',
+    image: null,
+    removeImage: false,
     isActive: true,
     isAvailable: true,
   };
 
-  it('exige foto no cadastro', () => {
-    const { errors } = validateForm(productSchema({ requireImage: true }), {
-      ...base,
-      image: null,
-    });
-    expect(errors.image).toBe('Envie a fotografia do produto.');
-  });
-
-  it('na edição a foto é opcional e o preço é normalizado', () => {
-    const { data } = validateForm(productSchema({ requireImage: false }), { ...base, image: null });
+  it('aceita produto sem foto e normaliza o preço', () => {
+    const { data } = validateForm(productSchema, base);
     expect(data.price).toBe('14.90');
+    expect(data.image).toBeNull();
   });
 
   it('aponta todos os campos obrigatórios ausentes', () => {
-    const { errors } = validateForm(productSchema({ requireImage: true }), {
+    const { errors } = validateForm(productSchema, {
       ...base,
       name: ' ',
       price: '',
       categoryId: '',
-      image: null,
     });
-    expect(Object.keys(errors).sort()).toEqual(['categoryId', 'image', 'name', 'price']);
+    expect(Object.keys(errors).sort()).toEqual(['categoryId', 'name', 'price']);
   });
 });

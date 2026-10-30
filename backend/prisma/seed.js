@@ -3,18 +3,24 @@
  * com usuários da retaguarda, cardápio, identidade visual e assinatura.
  * Afeta somente os dados desses restaurantes; os demais não são alterados.
  *
- * Todos os usuários da retaguarda usam a senha SEED_ADMIN_PASSWORD.
+ * Todos os usuários da retaguarda usam a senha SEED_ADMIN_PASSWORD; as sessões abertas desses
+ * usuários são encerradas. Não roda em produção (NODE_ENV=production).
  */
 import { readFile } from 'node:fs/promises';
 import { prisma } from '../src/config/database.js';
-import {
-  buildRestaurantFileKey,
-  deleteRestaurantFolder,
-  saveFile,
-} from '../src/shared/utils/file-storage.js';
+import { env } from '../src/config/env.js';
+import { businessToday } from '../src/shared/utils/dates.js';
+import { buildRestaurantFileKey, deleteFile, saveFile } from '../src/shared/utils/file-storage.js';
 import { hashPassword } from '../src/shared/utils/password.js';
 import { SEED_RESTAURANTS } from './seed-data.js';
 import { createSolidPng } from './seed-images.js';
+
+if (env.isProduction) {
+  console.error(
+    'O seed recria os cardápios de demonstração e redefine senhas: não roda com NODE_ENV=production.',
+  );
+  process.exit(1);
+}
 
 const MIN_PASSWORD_LENGTH = 8;
 const PRODUCT_IMAGE_SIZE = 480;
@@ -39,8 +45,8 @@ async function seedRestaurant({ slug, name, customization, menu }) {
     create: { slug, name },
   });
 
-  // Fotos ilustrativas gravadas no armazenamento antes de recriar os produtos.
-  await deleteRestaurantFolder(restaurant.id, 'products');
+  // Fotos novas gravadas antes da transação (nomes únicos); as antigas só são apagadas depois
+  // que ela confirmar. Se falhar, as novas são removidas e o cardápio anterior continua intacto.
   const imageKeys = new Map();
   for (const product of menu.flatMap((category) => category.products)) {
     const { extension, data } = await loadProductImage(product);
@@ -49,36 +55,52 @@ async function seedRestaurant({ slug, name, customization, menu }) {
     imageKeys.set(product.name, key);
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.restaurantCustomization.upsert({
-      where: { restaurantId: restaurant.id },
-      update: customization,
-      create: { restaurantId: restaurant.id, ...customization },
+  let previousKeys;
+  try {
+    previousKeys = await prisma.$transaction(async (tx) => {
+      const previous = await tx.product.findMany({
+        where: { restaurantId: restaurant.id, imageKey: { not: null } },
+        select: { imageKey: true },
+      });
+      await tx.restaurantCustomization.upsert({
+        where: { restaurantId: restaurant.id },
+        update: customization,
+        create: { restaurantId: restaurant.id, ...customization },
+      });
+
+      await tx.product.deleteMany({ where: { restaurantId: restaurant.id } });
+      await tx.category.deleteMany({ where: { restaurantId: restaurant.id } });
+
+      for (const [categoryPosition, categoryData] of menu.entries()) {
+        const category = await tx.category.create({
+          data: {
+            restaurantId: restaurant.id,
+            name: categoryData.name,
+            position: categoryPosition,
+          },
+        });
+
+        await tx.product.createMany({
+          data: categoryData.products.map((product, productPosition) => ({
+            restaurantId: restaurant.id,
+            categoryId: category.id,
+            name: product.name,
+            shortDescription: product.shortDescription,
+            detailedDescription: product.detailedDescription ?? null,
+            price: product.price,
+            imageKey: imageKeys.get(product.name),
+            isAvailable: product.isAvailable ?? true,
+            position: productPosition,
+          })),
+        });
+      }
+      return previous.map((product) => product.imageKey);
     });
-
-    await tx.product.deleteMany({ where: { restaurantId: restaurant.id } });
-    await tx.category.deleteMany({ where: { restaurantId: restaurant.id } });
-
-    for (const [categoryPosition, categoryData] of menu.entries()) {
-      const category = await tx.category.create({
-        data: { restaurantId: restaurant.id, name: categoryData.name, position: categoryPosition },
-      });
-
-      await tx.product.createMany({
-        data: categoryData.products.map((product, productPosition) => ({
-          restaurantId: restaurant.id,
-          categoryId: category.id,
-          name: product.name,
-          shortDescription: product.shortDescription,
-          detailedDescription: product.detailedDescription ?? null,
-          price: product.price,
-          imageKey: imageKeys.get(product.name),
-          isAvailable: product.isAvailable ?? true,
-          position: productPosition,
-        })),
-      });
-    }
-  });
+  } catch (error) {
+    await Promise.all([...imageKeys.values()].map((key) => deleteFile(key)));
+    throw error;
+  }
+  await Promise.all(previousKeys.map((key) => deleteFile(key)));
 
   return restaurant;
 }
@@ -106,18 +128,20 @@ async function seedAdminUsers(restaurantId, admins, passwordHash) {
       throw new Error(`O e-mail ${email} já pertence a outro restaurante.`);
     }
 
-    await prisma.adminUser.upsert({
+    const user = await prisma.adminUser.upsert({
       where: { email },
       update: { passwordHash, name: admin.name },
       create: { restaurantId, email, name: admin.name, passwordHash },
     });
+    // Senha redefinida: as sessões abertas com a anterior deixam de valer.
+    await prisma.adminSession.deleteMany({ where: { adminUserId: user.id } });
     console.log(`  Usuário ${email} criado/atualizado.`);
   }
 }
 
 /** Assinatura de demonstração (DEC-006), iniciada no primeiro dia do mês corrente. */
 async function seedSubscription(restaurantId, { monthlyAmount, dueDay }) {
-  const today = new Date();
+  const today = businessToday();
   await prisma.subscription.upsert({
     where: { restaurantId },
     update: {},
@@ -144,11 +168,12 @@ async function seedPlatformAdmin() {
     );
   }
   const passwordHash = await hashPassword(password);
-  await prisma.platformAdmin.upsert({
+  const admin = await prisma.platformAdmin.upsert({
     where: { email },
     update: { passwordHash },
     create: { email, name: 'Operador Demo', passwordHash },
   });
+  await prisma.platformSession.deleteMany({ where: { platformAdminId: admin.id } });
   console.log(`Operador do backoffice ${email} criado/atualizado.`);
 }
 

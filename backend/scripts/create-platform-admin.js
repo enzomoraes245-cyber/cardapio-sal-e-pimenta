@@ -38,12 +38,19 @@ if (!parsed.success) {
 try {
   const { email, name, password } = parsed.data;
   const passwordHash = await hashPassword(password);
-  await prisma.platformAdmin.upsert({
-    where: { email },
-    update: { name, passwordHash },
-    create: { email, name, passwordHash },
+  // Senha nova encerra as sessões abertas com a anterior (mesma regra da troca pelo backoffice).
+  const revoked = await prisma.$transaction(async (tx) => {
+    const admin = await tx.platformAdmin.upsert({
+      where: { email },
+      update: { name, passwordHash },
+      create: { email, name, passwordHash },
+    });
+    const { count } = await tx.platformSession.deleteMany({ where: { platformAdminId: admin.id } });
+    return count;
   });
-  console.log(`Operador ${email} criado/atualizado. Acesse /backoffice.`);
+  console.log(
+    `Operador ${email} criado/atualizado${revoked > 0 ? `; ${revoked} sessão(ões) encerrada(s)` : ''}. Acesse /backoffice.`,
+  );
 } catch (error) {
   console.error('Falha ao criar operador:', error);
   process.exitCode = 1;

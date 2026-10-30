@@ -1,8 +1,12 @@
-import { useCallback } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
-import { Spinner } from '../../../components/ui/Spinner.jsx';
-import { StatusMessage } from '../../../components/ui/StatusMessage.jsx';
+import { useCallback, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
+import { LinkButton } from '../../../components/admin/Button.jsx';
+import { LayersIcon } from '../../../components/admin/icons.jsx';
+import { PageHeader } from '../../../components/admin/PageHeader.jsx';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/admin/States.jsx';
+import { useToast } from '../../../components/admin/Toast.jsx';
 import { useResource } from '../../../hooks/useResource.js';
+import { createRequestId } from '../../../utils/request-id.js';
 import { updateProductStatus } from '../../availability/services/availability.service.js';
 import { listCategories } from '../../categories/services/categories.service.js';
 import { ProductForm } from '../components/ProductForm.jsx';
@@ -12,7 +16,10 @@ import * as productsService from '../services/products.service.js';
 export function ProductFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const isEdit = Boolean(id);
+  // Uma chave por formulário: clique duplo ou nova tentativa não duplicam o cadastro.
+  const [requestId] = useState(createRequestId);
 
   const loader = useCallback(
     async ({ signal }) => {
@@ -26,58 +33,69 @@ export function ProductFormPage() {
   );
   const { status, data, error, reload } = useResource(loader);
 
-  async function handleSubmit({ image, isActive, isAvailable, ...fields }) {
+  async function handleSubmit({ image, removeImage, isActive, isAvailable, ...fields }) {
     if (isEdit) {
       const current = data.product;
       await productsService.updateProduct(id, fields);
       if (image) await productsService.replaceProductImage(id, image);
+      else if (removeImage) await productsService.removeProductImage(id);
       if (isActive !== current.isActive || isAvailable !== current.isAvailable) {
         await updateProductStatus(id, { isActive, isAvailable });
       }
+      toast.success('Produto atualizado.');
     } else {
-      await productsService.createProduct({ ...fields, isActive, isAvailable, image });
+      await productsService.createProduct(
+        { ...fields, isActive, isAvailable, image },
+        { idempotencyKey: requestId },
+      );
+      toast.success('Produto cadastrado.');
     }
     navigate('/admin/produtos');
   }
 
-  const title = isEdit ? 'Editar produto' : 'Novo produto';
+  const back = { to: '/admin/produtos', label: 'Produtos' };
 
   return (
-    <section className="space-y-6">
-      <div>
-        <Link to="/admin/produtos" className="text-sm text-slate-600 hover:underline">
-          ← Produtos
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold">{title}</h1>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        back={back}
+        title={isEdit ? 'Editar produto' : 'Novo produto'}
+        description={
+          isEdit
+            ? 'As alterações aparecem no cardápio assim que você salvar.'
+            : 'Nome, preço e categoria são obrigatórios; a foto pode ser enviada depois.'
+        }
+      />
 
-      {status === 'loading' && <Spinner />}
+      {status === 'loading' && <LoadingState label="Carregando produto..." rows={4} />}
       {status === 'error' && (
-        <StatusMessage
-          tone="error"
+        <ErrorState
           title={error.status === 404 ? 'Produto não encontrado' : 'Não foi possível carregar'}
-          description={error.message}
-          action={error.status === 404 ? undefined : { label: 'Tentar novamente', onClick: reload }}
+          error={error}
+          onRetry={error.status === 404 ? undefined : reload}
         />
       )}
       {status === 'success' && data.categories.length === 0 && (
-        <StatusMessage
+        <EmptyState
+          icon={LayersIcon}
           title="Cadastre uma categoria primeiro"
-          description="Todo produto precisa pertencer a uma categoria."
-          action={{ label: 'Ir para categorias', onClick: () => navigate('/admin/categorias') }}
+          description="Todo produto pertence a uma categoria do cardápio."
+          action={
+            <LinkButton to="/admin/categorias" variant="primary">
+              Ir para categorias
+            </LinkButton>
+          }
         />
       )}
       {status === 'success' && data.categories.length > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-6">
-          <ProductForm
-            key={data.product?.id ?? 'novo'}
-            product={data.product}
-            categories={data.categories}
-            submitLabel={isEdit ? 'Salvar alterações' : 'Cadastrar produto'}
-            onSubmit={handleSubmit}
-          />
-        </div>
+        <ProductForm
+          key={data.product?.id ?? 'novo'}
+          product={data.product}
+          categories={data.categories}
+          submitLabel={isEdit ? 'Salvar alterações' : 'Cadastrar produto'}
+          onSubmit={handleSubmit}
+        />
       )}
-    </section>
+    </div>
   );
 }

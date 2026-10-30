@@ -9,3 +9,4 @@ qrcodeRoutes.use(requireFeature('qrcode'));
 
 qrcodeRoutes.get('/', qrcodeController.getInfo);
 qrcodeRoutes.get('/image.png', qrcodeController.getImage);
+qrcodeRoutes.get('/image.svg', qrcodeController.getSvg);

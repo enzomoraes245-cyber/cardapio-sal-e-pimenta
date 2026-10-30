@@ -11,26 +11,30 @@ export function findByRestaurant(restaurantId) {
   });
 }
 
-/** Atualiza nome (em Restaurant) e cores (em RestaurantCustomization) na mesma transação. */
-export async function update(restaurantId, { name, ...colors }) {
-  await prisma.$transaction(async (tx) => {
-    if (name !== undefined) {
-      await tx.restaurant.update({ where: { id: restaurantId }, data: { name } });
-    }
-    if (Object.keys(colors).length > 0) {
-      await tx.restaurantCustomization.upsert({
-        where: { restaurantId },
-        update: colors,
-        create: { restaurantId, ...colors },
-      });
-    }
+export function updateColors(restaurantId, colors) {
+  return prisma.restaurantCustomization.upsert({
+    where: { restaurantId },
+    update: colors,
+    create: { restaurantId, ...colors },
   });
 }
 
-export function setLogoKey(restaurantId, logoKey) {
-  return prisma.restaurantCustomization.upsert({
-    where: { restaurantId },
-    update: { logoKey },
-    create: { restaurantId, logoKey },
+/**
+ * Troca a chave do logotipo com a linha bloqueada (SELECT ... FOR UPDATE), criando a linha no
+ * primeiro envio. Trocas simultâneas ficam em sequência e cada uma devolve a chave substituída,
+ * para que nenhum arquivo fique órfão. `logoKey` null remove o logotipo.
+ */
+export function swapLogoKey(restaurantId, logoKey) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      INSERT INTO restaurant_customizations (restaurant_id, updated_at)
+      VALUES (${restaurantId}::uuid, now())
+      ON CONFLICT (restaurant_id) DO NOTHING`;
+    const [row] = await tx.$queryRaw`
+      SELECT logo_key FROM restaurant_customizations
+      WHERE restaurant_id = ${restaurantId}::uuid
+      FOR UPDATE`;
+    await tx.restaurantCustomization.update({ where: { restaurantId }, data: { logoKey } });
+    return { previousKey: row.logo_key };
   });
 }

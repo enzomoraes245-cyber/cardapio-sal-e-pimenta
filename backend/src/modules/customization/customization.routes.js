@@ -17,3 +17,4 @@ customizationRoutes.patch(
   customizationController.update,
 );
 customizationRoutes.put('/logo', imageUpload('logo'), customizationController.replaceLogo);
+customizationRoutes.delete('/logo', customizationController.removeLogo);

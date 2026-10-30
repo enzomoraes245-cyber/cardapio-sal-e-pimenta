@@ -33,22 +33,6 @@ export function MenuIcon({ size = 22 }) {
   );
 }
 
-export function PlusIcon({ size = 18 }) {
-  return (
-    <Icon size={size} strokeWidth={2}>
-      <path d="M12 5v14M5 12h14" />
-    </Icon>
-  );
-}
-
-export function MinusIcon({ size = 16 }) {
-  return (
-    <Icon size={size} strokeWidth={2.2}>
-      <path d="M5 12h14" />
-    </Icon>
-  );
-}
-
 export function BackIcon({ size = 20 }) {
   return (
     <Icon size={size} strokeWidth={2}>

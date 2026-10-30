@@ -1,64 +1,126 @@
-import { Spinner } from '../../../components/ui/Spinner.jsx';
-import { StatusMessage } from '../../../components/ui/StatusMessage.jsx';
+import { useState } from 'react';
+import { ConfirmDialog } from '../../../components/admin/Dialog.jsx';
+import { LayersIcon } from '../../../components/admin/icons.jsx';
+import { PageHeader } from '../../../components/admin/PageHeader.jsx';
+import { Panel } from '../../../components/admin/Panel.jsx';
+import { EmptyState, ErrorState, LoadingState } from '../../../components/admin/States.jsx';
+import { useToast } from '../../../components/admin/Toast.jsx';
+import { createRequestId } from '../../../utils/request-id.js';
 import { CategoryListItem } from '../components/CategoryListItem.jsx';
 import { CategoryNameForm } from '../components/CategoryNameForm.jsx';
 import { useCategories } from '../hooks/useCategories.js';
+import { plural } from '../../../utils/plural.js';
 
+/**
+ * Categorias do cardápio: cadastro, renomeação, exibição (ocultar mantém os produtos) e ordem.
+ * O cadastro só fica disponível depois que a lista carrega.
+ */
 export function CategoriesPage() {
-  const { status, data, error, reload, reordering, actionError, create, rename, move } =
+  const { status, data, error, reload, reordering, create, rename, setStatus, move } =
     useCategories();
+  const toast = useToast();
+  const [requestId, setRequestId] = useState(createRequestId);
+  const [hiding, setHiding] = useState(null);
+
+  async function handleCreate(values) {
+    const category = await create(values, { idempotencyKey: requestId });
+    setRequestId(createRequestId());
+    toast.success(`Categoria "${category.name}" criada.`);
+  }
+
+  async function changeStatus(category, isActive) {
+    try {
+      await setStatus(category.id, isActive);
+      toast.success(
+        isActive
+          ? `"${category.name}" voltou a aparecer no cardápio.`
+          : `"${category.name}" foi ocultada do cardápio.`,
+      );
+    } catch (statusError) {
+      toast.error(statusError.message);
+    }
+  }
+
+  function handleToggle(category, isActive) {
+    // Ocultar uma categoria com produtos no cardápio pede confirmação.
+    if (!isActive && category.publishableCount > 0) setHiding(category);
+    else changeStatus(category, isActive);
+  }
+
+  async function handleMove(index, offset) {
+    const failure = await move(data, index, offset);
+    if (failure) toast.error(failure.message);
+  }
 
   return (
-    <section className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Categorias</h1>
-        <p className="mt-1 text-slate-600">
-          A ordem abaixo é a ordem de exibição no cardápio. Categorias sem produtos visíveis não
-          aparecem para os clientes.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Categorias"
+        description="Seções do cardápio, na ordem em que aparecem para os clientes. Ocultar uma categoria tira ela e seus produtos do cardápio, sem apagar nada."
+      />
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <CategoryNameForm submitLabel="Adicionar" onSubmit={create} />
-      </div>
+      <Panel title="Nova categoria">
+        <CategoryNameForm
+          submitLabel="Adicionar categoria"
+          disabled={status !== 'success'}
+          onSubmit={handleCreate}
+        />
+      </Panel>
 
-      {status === 'loading' && <Spinner label="Carregando categorias..." />}
+      {status === 'loading' && <LoadingState label="Carregando categorias..." rows={4} />}
       {status === 'error' && (
-        <StatusMessage
-          tone="error"
+        <ErrorState
           title="Não foi possível carregar as categorias"
-          description={error.message}
-          action={{ label: 'Tentar novamente', onClick: reload }}
+          error={error}
+          onRetry={reload}
         />
       )}
       {status === 'success' && data.length === 0 && (
-        <StatusMessage
-          title="Nenhuma categoria cadastrada"
-          description="Adicione a primeira categoria para começar a montar o cardápio."
+        <EmptyState
+          icon={LayersIcon}
+          title="Nenhuma categoria ainda"
+          description="Crie a primeira seção do cardápio, como Pratos, Bebidas ou Sobremesas."
         />
       )}
-
-      {actionError && (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
-          {actionError}
-        </p>
-      )}
-
       {status === 'success' && data.length > 0 && (
-        <ol className="space-y-2" aria-label="Categorias em ordem de exibição">
-          {data.map((category, index) => (
-            <CategoryListItem
-              key={category.id}
-              category={category}
-              isFirst={index === 0}
-              isLast={index === data.length - 1}
-              reordering={reordering}
-              onRename={rename}
-              onMove={(offset) => move(data, index, offset)}
-            />
-          ))}
-        </ol>
+        <Panel
+          title="Ordem no cardápio"
+          description={`${plural(data.length, 'categoria')} · ${plural(data.filter((c) => c.isActive).length, 'visível', 'visíveis')}`}
+          flush
+        >
+          <ol className="divide-y divide-admin-line">
+            {data.map((category, index) => (
+              <CategoryListItem
+                key={category.id}
+                category={category}
+                position={index + 1}
+                isFirst={index === 0}
+                isLast={index === data.length - 1}
+                reordering={reordering}
+                onRename={async (id, values) => {
+                  await rename(id, values);
+                  toast.success('Categoria renomeada.');
+                }}
+                onToggle={handleToggle}
+                onMove={(offset) => handleMove(index, offset)}
+              />
+            ))}
+          </ol>
+        </Panel>
       )}
-    </section>
+
+      {hiding && (
+        <ConfirmDialog
+          title={`Ocultar "${hiding.name}"?`}
+          description={`${hiding.publishableCount === 1 ? '1 produto desta categoria deixa' : `${hiding.publishableCount} produtos desta categoria deixam`} de aparecer no cardápio. Nada é apagado: reative quando quiser.`}
+          confirmLabel="Ocultar categoria"
+          onClose={() => setHiding(null)}
+          onConfirm={async () => {
+            await setStatus(hiding.id, false);
+            toast.success(`"${hiding.name}" foi ocultada do cardápio.`);
+          }}
+        />
+      )}
+    </div>
   );
 }

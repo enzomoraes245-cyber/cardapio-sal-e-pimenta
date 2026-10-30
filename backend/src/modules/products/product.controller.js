@@ -1,3 +1,4 @@
+import { readIdempotencyKey } from '../../shared/utils/idempotency.js';
 import * as productService from './product.service.js';
 
 export async function list(req, res) {
@@ -10,13 +11,15 @@ export async function get(req, res) {
   });
 }
 
+/** 201 ao criar; 200 quando a mesma Idempotency-Key repete um cadastro já feito. */
 export async function create(req, res) {
-  const product = await productService.createProduct(
+  const { product, replayed } = await productService.createProduct(
     req.tenant.restaurantId,
     req.validated.body,
     req.file,
+    { idempotencyKey: readIdempotencyKey(req) },
   );
-  res.status(201).json({ data: product });
+  res.status(replayed ? 200 : 201).json({ data: product });
 }
 
 export async function update(req, res) {
@@ -33,6 +36,14 @@ export async function replaceImage(req, res) {
     req.tenant.restaurantId,
     req.validated.params.id,
     req.file,
+  );
+  res.json({ data: product });
+}
+
+export async function removeImage(req, res) {
+  const product = await productService.removeProductImage(
+    req.tenant.restaurantId,
+    req.validated.params.id,
   );
   res.json({ data: product });
 }

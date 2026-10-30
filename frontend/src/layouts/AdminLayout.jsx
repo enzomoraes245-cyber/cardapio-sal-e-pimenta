@@ -1,54 +1,68 @@
-import { Link, NavLink, Outlet } from 'react-router';
-import { Button } from '../components/ui/Button.jsx';
+import {
+  HomeIcon,
+  LayersIcon,
+  PackageIcon,
+  PaletteIcon,
+  QrCodeIcon,
+  StoreIcon,
+  UtensilsIcon,
+} from '../components/admin/icons.jsx';
+import { RESTAURANT_AREA } from '../features/auth/areas.js';
 import { useSession } from '../features/auth/hooks/useSession.js';
+import { AdminShell } from './AdminShell.jsx';
 
-const NAV_ITEMS = [
-  { to: '/admin', label: 'Início', end: true },
-  { to: '/admin/categorias', label: 'Categorias' },
-  { to: '/admin/produtos', label: 'Produtos' },
-  { to: '/admin/personalizacao', label: 'Personalização', feature: 'customization' },
-  { to: '/admin/qrcode', label: 'QR Code', feature: 'qrcode' },
-];
+/** Itens do menu do painel; os de módulos bloqueados pelo backoffice não aparecem. */
+function buildNavigation(features, restaurant) {
+  const enabled = (feature) => features?.[feature] !== false;
+  return [
+    { items: [{ to: '/admin', label: 'Início', icon: HomeIcon, end: true }] },
+    {
+      label: 'Cardápio',
+      items: [
+        { to: '/admin/produtos', label: 'Produtos', icon: PackageIcon },
+        { to: '/admin/categorias', label: 'Categorias', icon: LayersIcon },
+      ],
+    },
+    {
+      label: 'Estabelecimento',
+      items: [
+        { to: '/admin/estabelecimento', label: 'Dados do estabelecimento', icon: StoreIcon },
+        enabled('customization') && {
+          to: '/admin/personalizacao',
+          label: 'Identidade visual',
+          icon: PaletteIcon,
+        },
+        enabled('qrcode') && { to: '/admin/qrcode', label: 'QR Code', icon: QrCodeIcon },
+        { href: `/cardapio/${restaurant.slug}`, label: 'Ver cardápio', icon: UtensilsIcon },
+      ].filter(Boolean),
+    },
+  ];
+}
 
-export function AdminLayout() {
-  const { restaurant, features, logout } = useSession();
-  const items = NAV_ITEMS.filter((item) => !item.feature || features?.[item.feature] !== false);
-
+function RestaurantContext({ restaurant }) {
   return (
-    <div className="min-h-dvh bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <Link to="/admin" className="font-semibold text-slate-900">
-            {restaurant?.name ?? 'Retaguarda'}
-            <span className="font-normal text-slate-500"> · Retaguarda</span>
-          </Link>
-          <Button variant="ghost" size="sm" onClick={logout}>
-            Sair
-          </Button>
-        </div>
-        <nav aria-label="Retaguarda" className="mx-auto max-w-5xl overflow-x-auto px-4">
-          <ul className="flex gap-1 pb-2">
-            {items.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    `block rounded-md px-3 py-1.5 text-sm whitespace-nowrap ${
-                      isActive ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'
-                    }`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <Outlet />
-      </main>
+    <div className="min-w-0">
+      <p className="text-[11px] font-semibold tracking-[0.14em] text-admin-sidebar-muted uppercase">
+        Restaurante
+      </p>
+      <p className="mt-0.5 truncate text-sm font-semibold text-white">{restaurant.name}</p>
+      <p className="truncate text-xs text-admin-sidebar-muted">/cardapio/{restaurant.slug}</p>
     </div>
+  );
+}
+
+/** Estrutura do painel do restaurante (/admin). */
+export function AdminLayout() {
+  const { admin, restaurant, features, logout } = useSession();
+  return (
+    <AdminShell
+      environment={RESTAURANT_AREA.environment}
+      homePath={RESTAURANT_AREA.homePath}
+      accountPath={RESTAURANT_AREA.accountPath}
+      navigation={buildNavigation(features, restaurant)}
+      context={<RestaurantContext restaurant={restaurant} />}
+      user={admin}
+      onLogout={logout}
+    />
   );
 }

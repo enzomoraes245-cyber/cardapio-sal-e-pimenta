@@ -1,31 +1,57 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
-import { Button } from '../../../../components/ui/Button.jsx';
-import { Card } from '../../../../components/ui/Card.jsx';
-import { FormFeedback } from '../../../../components/ui/FormFeedback.jsx';
-import { FormField, INPUT_CLASS } from '../../../../components/ui/FormField.jsx';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { Alert } from '../../../../components/admin/Alert.jsx';
+import { Button, LinkButton } from '../../../../components/admin/Button.jsx';
+import {
+  AddonInput,
+  AffixInput,
+  Field,
+  Switch,
+  TextInput,
+} from '../../../../components/admin/Field.jsx';
+import { FormSection } from '../../../../components/admin/FormSection.jsx';
+import { PageHeader } from '../../../../components/admin/PageHeader.jsx';
+import { PasswordInput } from '../../../../components/admin/PasswordInput.jsx';
+import { useToast } from '../../../../components/admin/Toast.jsx';
 import { useSubmit } from '../../../../hooks/useSubmit.js';
+import { createRequestId } from '../../../../utils/request-id.js';
+import { todayIsoDate } from '../../../../utils/format-date.js';
 import { slugify } from '../../../../utils/slugify.js';
 import { apiValidationErrors, validateForm } from '../../../../utils/validate-form.js';
-import { FeatureCheckboxes } from '../components/FeatureCheckboxes.jsx';
 import { createRestaurant } from '../services/platform-restaurants.service.js';
-import { ALL_FEATURES_ENABLED } from '../utils/feature-labels.js';
+import { ALL_FEATURES_ENABLED, FEATURE_LABELS } from '../utils/feature-labels.js';
 import { newRestaurantSchema } from '../validators/restaurant.schema.js';
 
-const INITIAL_VALUES = {
+const initialValues = () => ({
   name: '',
   slug: '',
+  contactPhone: '',
+  contactEmail: '',
   admin: { name: '', email: '', password: '' },
-  subscription: { monthlyAmount: '', dueDay: '10' },
+  subscription: { monthlyAmount: '', dueDay: '10', startedAt: todayIsoDate() },
   features: ALL_FEATURES_ENABLED,
-};
+});
 
+/** Leva o foco ao primeiro campo com erro depois de uma tentativa de envio. */
+function useFocusFirstError(formRef, errors) {
+  useEffect(() => {
+    if (Object.keys(errors).length === 0) return;
+    formRef.current?.querySelector('[aria-invalid="true"]')?.focus();
+  }, [formRef, errors]);
+}
+
+/** Cadastro de restaurante com o primeiro responsável, assinatura e módulos (DEC-006). */
 export function NewRestaurantPage() {
   const navigate = useNavigate();
-  const [values, setValues] = useState(INITIAL_VALUES);
+  const toast = useToast();
+  const formRef = useRef(null);
+  const [values, setValues] = useState(initialValues);
   const [slugEdited, setSlugEdited] = useState(false);
   const [errors, setErrors] = useState({});
+  // Uma chave por formulário: reenviar (clique duplo, nova tentativa) não duplica o cadastro.
+  const [requestId] = useState(createRequestId);
   const { submitting, feedback, run } = useSubmit();
+  useFocusFirstError(formRef, errors);
 
   const set = (path, value) =>
     setValues((previous) => {
@@ -37,7 +63,6 @@ export function NewRestaurantPage() {
   const bind = (path) => ({
     value: path.split('.').reduce((object, key) => object[key], values),
     onChange: (event) => set(path, event.target.value),
-    className: INPUT_CLASS,
   });
 
   function handleNameChange(event) {
@@ -54,95 +79,165 @@ export function NewRestaurantPage() {
 
     let created;
     const ok = await run(async () => {
-      created = await createRestaurant(data);
+      try {
+        created = await createRestaurant(data, { idempotencyKey: requestId });
+      } catch (error) {
+        const apiErrors = apiValidationErrors(error);
+        if (apiErrors) setErrors(apiErrors);
+        throw error;
+      }
     });
-    if (ok) navigate(`/backoffice/restaurantes/${created.id}`);
+    if (ok) {
+      toast.success(`${created.name} cadastrado.`);
+      navigate(`/backoffice/restaurantes/${created.id}`);
+    }
   }
 
-  const apiErrors = apiValidationErrors(feedback?.error) ?? {};
-  const errorFor = (path) => errors[path] ?? apiErrors[path];
+  const publicUrl = `${window.location.origin}/cardapio/${values.slug || '…'}`;
 
   return (
-    <section className="space-y-6">
-      <div>
-        <Link to="/backoffice" className="text-sm text-slate-600 hover:underline">
-          ← Restaurantes
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold">Novo restaurante</h1>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        back={{ to: '/backoffice/restaurantes', label: 'Restaurantes' }}
+        title="Novo restaurante"
+        description="Cadastra o restaurante, o primeiro responsável pelo painel e a assinatura mensal."
+      />
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-6">
-        <Card title="Restaurante">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <FormField label="Nome" error={errorFor('name')}>
-              <input {...bind('name')} onChange={handleNameChange} maxLength={120} />
-            </FormField>
-            <FormField
-              label="Endereço do cardápio"
-              hint={`/cardapio/${values.slug || '...'} — não pode ser alterado depois.`}
-              error={errorFor('slug')}
-            >
-              <input
-                {...bind('slug')}
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        noValidate
+        className="rounded-admin-panel border border-admin-line bg-admin-surface"
+      >
+        <div className="px-5 py-8 sm:px-8">
+          {feedback?.tone === 'error' && (
+            <Alert tone="danger" className="mb-8" title="Não foi possível cadastrar">
+              {feedback.message}
+            </Alert>
+          )}
+
+          <FormSection
+            title="Restaurante"
+            description="O endereço público é usado no cardápio e no QR Code e não pode ser alterado depois."
+          >
+            <Field label="Nome" error={errors.name} required>
+              <TextInput
+                value={values.name}
+                onChange={handleNameChange}
+                maxLength={120}
+                autoComplete="off"
+              />
+            </Field>
+            <Field label="Endereço público" hint={publicUrl} error={errors.slug} required>
+              <AddonInput
+                addon="/cardapio/"
+                value={values.slug}
                 onChange={(event) => {
                   setSlugEdited(true);
                   set('slug', event.target.value.toLowerCase());
                 }}
                 maxLength={80}
+                autoComplete="off"
               />
-            </FormField>
-          </div>
-        </Card>
+            </Field>
+          </FormSection>
 
-        <Card title="Primeiro administrador" description="Acesso à retaguarda do restaurante.">
-          <div className="grid gap-5 sm:grid-cols-3">
-            <FormField label="Nome" error={errorFor('admin.name')}>
-              <input {...bind('admin.name')} maxLength={120} />
-            </FormField>
-            <FormField label="E-mail" error={errorFor('admin.email')}>
-              <input type="email" autoComplete="off" {...bind('admin.email')} />
-            </FormField>
-            <FormField
+          <FormSection
+            title="Contato"
+            description="Uso interno da plataforma (cobrança e suporte). Não aparece no cardápio."
+          >
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Telefone" error={errors.contactPhone} optional>
+                <TextInput
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="(11) 91234-5678"
+                  {...bind('contactPhone')}
+                />
+              </Field>
+              <Field label="E-mail de contato" error={errors.contactEmail} optional>
+                <TextInput type="email" inputMode="email" {...bind('contactEmail')} />
+              </Field>
+            </div>
+          </FormSection>
+
+          <FormSection
+            title="Responsável"
+            description="Primeiro acesso ao painel do restaurante. Depois de entrar, ele pode trocar a senha em Minha conta."
+          >
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Nome" error={errors['admin.name']} required>
+                <TextInput {...bind('admin.name')} maxLength={120} />
+              </Field>
+              <Field label="E-mail de acesso" error={errors['admin.email']} required>
+                <TextInput type="email" autoComplete="off" {...bind('admin.email')} />
+              </Field>
+            </div>
+            <Field
               label="Senha inicial"
-              hint="Mínimo de 8 caracteres."
-              error={errorFor('admin.password')}
+              hint="Ao menos 8 caracteres."
+              error={errors['admin.password']}
+              required
+              className="sm:max-w-sm"
             >
-              <input type="password" autoComplete="new-password" {...bind('admin.password')} />
-            </FormField>
-          </div>
-        </Card>
+              <PasswordInput autoComplete="new-password" {...bind('admin.password')} />
+            </Field>
+          </FormSection>
 
-        <Card
-          title="Assinatura"
-          description="Cobrança manual: as faturas são geradas no backoffice."
-        >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <FormField
-              label="Mensalidade (R$)"
-              hint="Ex.: 99,90"
-              error={errorFor('subscription.monthlyAmount')}
-            >
-              <input inputMode="decimal" {...bind('subscription.monthlyAmount')} />
-            </FormField>
-            <FormField
-              label="Dia de vencimento"
-              hint="Entre 1 e 28."
-              error={errorFor('subscription.dueDay')}
-            >
-              <input type="number" min={1} max={28} {...bind('subscription.dueDay')} />
-            </FormField>
-          </div>
-        </Card>
+          <FormSection
+            title="Assinatura"
+            description="Cobrança manual: as mensalidades são geradas no backoffice a partir do mês de início. Alterações futuras não mudam mensalidades já geradas."
+          >
+            <div className="grid gap-5 sm:grid-cols-3">
+              <Field label="Mensalidade" error={errors['subscription.monthlyAmount']} required>
+                <AffixInput
+                  prefix="R$"
+                  inputMode="decimal"
+                  placeholder="99,90"
+                  {...bind('subscription.monthlyAmount')}
+                />
+              </Field>
+              <Field
+                label="Dia de vencimento"
+                hint="Entre 1 e 28."
+                error={errors['subscription.dueDay']}
+                required
+              >
+                <TextInput type="number" min={1} max={28} {...bind('subscription.dueDay')} />
+              </Field>
+              <Field label="Início da cobrança" error={errors['subscription.startedAt']} required>
+                <TextInput type="date" {...bind('subscription.startedAt')} />
+              </Field>
+            </div>
+          </FormSection>
 
-        <Card title="Módulos liberados">
-          <FeatureCheckboxes value={values.features} onChange={(value) => set('features', value)} />
-        </Card>
+          <FormSection
+            title="Módulos"
+            description="Recursos liberados para este restaurante. Podem ser alterados a qualquer momento."
+          >
+            <div className="space-y-4">
+              {FEATURE_LABELS.map(({ key, label, hint }) => (
+                <Switch
+                  key={key}
+                  label={label}
+                  description={hint}
+                  checked={values.features[key]}
+                  onChange={(checked) => set('features', { ...values.features, [key]: checked })}
+                />
+              ))}
+            </div>
+          </FormSection>
+        </div>
 
-        <FormFeedback feedback={feedback} />
-        <Button type="submit" disabled={submitting}>
-          {submitting ? 'Cadastrando...' : 'Cadastrar restaurante'}
-        </Button>
+        <div className="sticky bottom-0 flex flex-col-reverse gap-2 rounded-b-admin-panel border-t border-admin-line bg-admin-subtle/95 px-5 py-4 backdrop-blur-sm sm:flex-row sm:justify-end sm:px-8">
+          <LinkButton to="/backoffice/restaurantes" variant="secondary">
+            Cancelar
+          </LinkButton>
+          <Button type="submit" loading={submitting}>
+            Cadastrar restaurante
+          </Button>
+        </div>
       </form>
-    </section>
+    </div>
   );
 }
