@@ -31,6 +31,11 @@ productRoutes.put(
   validate({ params: idParamsSchema }),
   productController.replaceImage,
 );
+productRoutes.delete(
+  '/:id/image',
+  validate({ params: idParamsSchema }),
+  productController.removeImage,
+);
 
 /** Ordenação dentro da categoria (MOD-05). Montada em /api/v1/admin/categories. */
 export const categoryProductRoutes = Router();

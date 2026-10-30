@@ -4,6 +4,7 @@ import {
   PackageIcon,
   PaletteIcon,
   QrCodeIcon,
+  StoreIcon,
   UtensilsIcon,
 } from '../components/admin/icons.jsx';
 import { RESTAURANT_AREA } from '../features/auth/areas.js';
@@ -25,6 +26,7 @@ function buildNavigation(features, restaurant) {
     {
       label: 'Estabelecimento',
       items: [
+        { to: '/admin/estabelecimento', label: 'Dados do estabelecimento', icon: StoreIcon },
         enabled('customization') && {
           to: '/admin/personalizacao',
           label: 'Identidade visual',

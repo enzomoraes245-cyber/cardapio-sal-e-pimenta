@@ -15,3 +15,7 @@ export async function update(req, res) {
 export async function replaceLogo(req, res) {
   res.json({ data: await customizationService.replaceLogo(req.tenant.restaurantId, req.file) });
 }
+
+export async function removeLogo(req, res) {
+  res.json({ data: await customizationService.removeLogo(req.tenant.restaurantId) });
+}

@@ -2,6 +2,7 @@ import { buildPublicFileUrl } from '../../config/storage.js';
 import { publishMenuUpdated } from '../../shared/events/menu-events.js';
 import { NotFoundError, ValidationError } from '../../shared/errors/app-error.js';
 import { buildRestaurantFileKey, deleteFile, saveFile } from '../../shared/utils/file-storage.js';
+import { createOnce } from '../../shared/utils/idempotency.js';
 import { readImageFile } from '../../shared/utils/image-upload.js';
 import { assertCompleteOrder } from '../../shared/utils/ordering.js';
 import * as categoryRepository from '../categories/category.repository.js';
@@ -28,16 +29,12 @@ async function assertCategoryBelongsToRestaurant(restaurantId, categoryId) {
   }
 }
 
-/** Grava a imagem e, se a operação no banco falhar, remove o arquivo recém-gravado. */
-async function withStoredImage(restaurantId, image, operation) {
+/** Grava a imagem recebida e devolve a chave (ou null quando não houver imagem). */
+async function storeImage(restaurantId, image) {
+  if (!image) return null;
   const key = buildRestaurantFileKey(restaurantId, 'products', image.extension);
   await saveFile(key, image.buffer);
-  try {
-    return await operation(key);
-  } catch (error) {
-    await deleteFile(key);
-    throw error;
-  }
+  return key;
 }
 
 export async function listProducts(restaurantId) {
@@ -51,24 +48,40 @@ export async function getProduct(restaurantId, id) {
   return toAdminProduct(product);
 }
 
-/** RF-009 / RN-004: nome, preço, categoria (do mesmo restaurante) e foto são obrigatórios. */
-export async function createProduct(restaurantId, data, file) {
-  const image = readImageFile(file, {
-    field: IMAGE_FIELD,
-    required: true,
-    missingMessage: 'Envie a fotografia do produto.',
-  });
+/**
+ * RF-009 / RN-003: nome, preço e categoria (do mesmo restaurante) são obrigatórios. A foto é
+ * opcional (DEC-007): sem foto, o produto fica salvo mas só aparece no cardápio depois de
+ * receber uma. Com Idempotency-Key, o reenvio devolve o mesmo produto e descarta a foto repetida.
+ */
+export async function createProduct(restaurantId, data, file, { idempotencyKey } = {}) {
+  const image = readImageFile(file, { field: IMAGE_FIELD, required: false });
   await assertCategoryBelongsToRestaurant(restaurantId, data.categoryId);
 
-  const product = await withStoredImage(restaurantId, image, async (imageKey) =>
-    productRepository.create(restaurantId, {
-      ...data,
-      imageKey,
-      position: await productRepository.nextPosition(restaurantId, data.categoryId),
-    }),
-  );
-  publishMenuUpdated(restaurantId);
-  return toAdminProduct(product);
+  const imageKey = await storeImage(restaurantId, image);
+  try {
+    const { result, replayed } = await createOnce(
+      { key: idempotencyKey, scope: 'admin.product.create', ownerId: restaurantId },
+      {
+        create: async (tx) =>
+          productRepository.create(
+            restaurantId,
+            {
+              ...data,
+              imageKey,
+              position: await productRepository.nextPosition(restaurantId, data.categoryId, tx),
+            },
+            tx,
+          ),
+        load: (id) => getProduct(restaurantId, id),
+      },
+    );
+    if (replayed) await deleteFile(imageKey);
+    else publishMenuUpdated(restaurantId);
+    return { product: result, replayed };
+  } catch (error) {
+    await deleteFile(imageKey);
+    throw error;
+  }
 }
 
 /** RF-010 / RF-011 / CA-010. Ao trocar de categoria, o produto vai para o fim da nova categoria. */
@@ -88,24 +101,40 @@ export async function updateProduct(restaurantId, id, data) {
   return toAdminProduct(product);
 }
 
-/** RF-012: substitui a foto; a anterior é apagada somente depois de salvar a nova. */
+/**
+ * Aplica a nova chave da foto (ou null para remover) com a linha bloqueada. A foto anterior só é
+ * apagada depois da troca confirmada no banco; se o produto não existir, a nova é descartada.
+ */
+async function swapImage(restaurantId, id, imageKey) {
+  let swapped;
+  try {
+    swapped = await productRepository.swapImageKey(restaurantId, id, imageKey);
+  } catch (error) {
+    await deleteFile(imageKey);
+    throw error;
+  }
+  if (!swapped) {
+    await deleteFile(imageKey);
+    throw new NotFoundError(PRODUCT_NOT_FOUND);
+  }
+  await deleteFile(swapped.previousKey);
+  publishMenuUpdated(restaurantId);
+  return getProduct(restaurantId, id);
+}
+
+/** RF-012: envia ou substitui a foto. */
 export async function replaceProductImage(restaurantId, id, file) {
-  const current = await productRepository.findById(restaurantId, id);
-  if (!current) throw new NotFoundError(PRODUCT_NOT_FOUND);
   const image = readImageFile(file, {
     field: IMAGE_FIELD,
     required: true,
     missingMessage: 'Envie a nova fotografia.',
   });
+  return swapImage(restaurantId, id, await storeImage(restaurantId, image));
+}
 
-  const product = await withStoredImage(restaurantId, image, async (imageKey) => {
-    const updated = await productRepository.update(restaurantId, id, { imageKey });
-    if (!updated) throw new NotFoundError(PRODUCT_NOT_FOUND);
-    return updated;
-  });
-  await deleteFile(current.imageKey);
-  publishMenuUpdated(restaurantId);
-  return toAdminProduct(product);
+/** Remove a foto (DEC-007): o produto continua cadastrado e sai do cardápio até ter outra. */
+export function removeProductImage(restaurantId, id) {
+  return swapImage(restaurantId, id, null);
 }
 
 /** RF-017 / RF-018: recebe todos os produtos da categoria na nova ordem. */

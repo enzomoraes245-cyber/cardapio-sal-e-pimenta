@@ -8,7 +8,8 @@ export const inputClass =
 
 /**
  * Campo de formulário acessível: associa rótulo, dica e erro ao controle filho.
- * O filho recebe id, aria-invalid, aria-describedby e aria-required.
+ * O filho recebe id, aria-invalid, aria-describedby e aria-required. `hideLabel` mantém o rótulo
+ * só para leitores de tela (quando o contexto visual já identifica o campo).
  */
 export function Field({
   label,
@@ -16,6 +17,7 @@ export function Field({
   error,
   required = false,
   optional = false,
+  hideLabel = false,
   action,
   className,
   children,
@@ -27,7 +29,7 @@ export function Field({
 
   return (
     <div className={cx('space-y-1.5', className)}>
-      <div className="flex items-baseline justify-between gap-3">
+      <div className={cx('flex items-baseline justify-between gap-3', hideLabel && 'sr-only')}>
         <label htmlFor={id} className="text-sm font-medium text-admin-text">
           {label}
           {required && (

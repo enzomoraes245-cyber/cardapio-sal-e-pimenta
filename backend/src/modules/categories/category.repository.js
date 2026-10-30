@@ -1,51 +1,68 @@
 import { prisma } from '../../config/database.js';
+import { PUBLISHED_PRODUCT_WHERE } from '../menu/menu.repository.js';
 
 const CATEGORY_SELECT = {
   id: true,
   name: true,
   position: true,
+  isActive: true,
   _count: { select: { products: true } },
 };
 
-function toCategory({ _count, ...category }) {
-  return { ...category, productCount: _count.products };
+/**
+ * `productCount`: todos os produtos da categoria. `publishableCount`: os que aparecem no
+ * cardápio enquanto a categoria estiver ativa (ativos, disponíveis e com foto).
+ */
+function toCategory({ _count, ...category }, publishableCount = 0) {
+  return { ...category, productCount: _count.products, publishableCount };
+}
+
+function countPublishable(restaurantId, categoryId, client = prisma) {
+  return client.product.groupBy({
+    by: ['categoryId'],
+    where: { restaurantId, ...(categoryId && { categoryId }), ...PUBLISHED_PRODUCT_WHERE },
+    _count: { _all: true },
+  });
 }
 
 export async function listByRestaurant(restaurantId) {
-  const categories = await prisma.category.findMany({
-    where: { restaurantId },
-    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-    select: CATEGORY_SELECT,
-  });
-  return categories.map(toCategory);
+  const [categories, publishable] = await Promise.all([
+    prisma.category.findMany({
+      where: { restaurantId },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+      select: CATEGORY_SELECT,
+    }),
+    countPublishable(restaurantId),
+  ]);
+  const counts = new Map(publishable.map((row) => [row.categoryId, row._count._all]));
+  return categories.map((category) => toCategory(category, counts.get(category.id)));
 }
 
-export async function findById(restaurantId, id) {
-  const category = await prisma.category.findFirst({
+export async function findById(restaurantId, id, client = prisma) {
+  const category = await client.category.findFirst({
     where: { id, restaurantId },
     select: CATEGORY_SELECT,
   });
-  return category && toCategory(category);
+  if (!category) return null;
+  const [publishable] = await countPublishable(restaurantId, id, client);
+  return toCategory(category, publishable?._count._all);
 }
 
-export async function create(restaurantId, { name }) {
-  const { _max } = await prisma.category.aggregate({
+/** Cria no fim da lista (na transação recebida, para não disputar a mesma posição). */
+export async function create(restaurantId, { name }, client = prisma) {
+  const { _max } = await client.category.aggregate({
     where: { restaurantId },
     _max: { position: true },
   });
-  const category = await prisma.category.create({
+  return client.category.create({
     data: { restaurantId, name, position: (_max.position ?? -1) + 1 },
-    select: CATEGORY_SELECT,
+    select: { id: true },
   });
-  return toCategory(category);
 }
 
 /** Atualiza somente se a categoria pertencer ao restaurante. Retorna null caso contrário. */
-export async function updateName(restaurantId, id, name) {
-  const { count } = await prisma.category.updateMany({
-    where: { id, restaurantId },
-    data: { name },
-  });
+export async function update(restaurantId, id, data) {
+  const { count } = await prisma.category.updateMany({ where: { id, restaurantId }, data });
   return count === 0 ? null : findById(restaurantId, id);
 }
 

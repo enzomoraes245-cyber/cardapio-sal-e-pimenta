@@ -12,6 +12,7 @@ import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage.jsx'
 import { adminSessionService } from '../features/auth/services/auth.service.js';
 import { CategoriesPage } from '../features/categories/pages/CategoriesPage.jsx';
 import { CustomizationPage } from '../features/customization/pages/CustomizationPage.jsx';
+import { EstablishmentPage } from '../features/establishment/pages/EstablishmentPage.jsx';
 import { ProductFormPage } from '../features/products/pages/ProductFormPage.jsx';
 import { ProductsPage } from '../features/products/pages/ProductsPage.jsx';
 import { QrCodePage } from '../features/qrcode/pages/QrCodePage.jsx';
@@ -39,6 +40,7 @@ export default function AdminApp() {
               <Route path="produtos" element={<ProductsPage />} />
               <Route path="produtos/novo" element={<ProductFormPage />} />
               <Route path="produtos/:id" element={<ProductFormPage />} />
+              <Route path="estabelecimento" element={<EstablishmentPage />} />
               <Route element={<RequireFeature feature="customization" title="Identidade visual" />}>
                 <Route path="personalizacao" element={<CustomizationPage />} />
               </Route>

@@ -73,7 +73,7 @@ describe('cadastro de produtos (MOD-03)', () => {
     expect(image.headers['content-type']).toBe('image/png');
   });
 
-  it('impede cadastro sem nome, preço válido, categoria ou foto (CA-007)', async () => {
+  it('impede cadastro sem nome, preço válido ou categoria (CA-007; foto opcional, DEC-007)', async () => {
     const valid = { name: 'X', price: '10', categoryId: tenantA.category.id };
     const cases = [
       [{ ...valid, name: '' }, VALID_PNG, 'name'],
@@ -81,7 +81,6 @@ describe('cadastro de produtos (MOD-03)', () => {
       [{ ...valid, price: '10,999' }, VALID_PNG, 'price'],
       [{ ...valid, price: 'abc' }, VALID_PNG, 'price'],
       [{ name: 'X', price: '10' }, VALID_PNG, 'categoryId'],
-      [valid, null, 'image'],
     ];
 
     for (const [fields, image, field] of cases) {

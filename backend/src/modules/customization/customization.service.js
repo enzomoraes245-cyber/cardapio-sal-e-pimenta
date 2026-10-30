@@ -25,32 +25,40 @@ export async function getCustomization(restaurantId) {
   return toCustomization(await loadCustomization(restaurantId));
 }
 
-/** RF-037 / RF-039: nome e cores, aplicados somente ao restaurante da sessão (RF-040). */
-export async function updateCustomization(restaurantId, data) {
-  await customizationRepository.update(restaurantId, data);
+/** RF-039: cores aplicadas somente ao restaurante da sessão (RF-040). */
+export async function updateCustomization(restaurantId, colors) {
+  await customizationRepository.updateColors(restaurantId, colors);
   publishMenuUpdated(restaurantId);
   return getCustomization(restaurantId);
 }
 
-/** RF-038: envia ou substitui o logotipo; o arquivo anterior é removido depois de salvar. */
+/** Aplica a nova chave do logotipo e só então apaga o arquivo anterior. */
+async function swapLogo(restaurantId, logoKey) {
+  let swapped;
+  try {
+    swapped = await customizationRepository.swapLogoKey(restaurantId, logoKey);
+  } catch (error) {
+    await deleteFile(logoKey);
+    throw error;
+  }
+  await deleteFile(swapped.previousKey);
+  publishMenuUpdated(restaurantId);
+  return getCustomization(restaurantId);
+}
+
+/** RF-038: envia ou substitui o logotipo. */
 export async function replaceLogo(restaurantId, file) {
-  const current = await loadCustomization(restaurantId);
   const image = readImageFile(file, {
     field: 'logo',
     required: true,
     missingMessage: 'Envie o arquivo do logotipo.',
   });
-
   const key = buildRestaurantFileKey(restaurantId, 'logo', image.extension);
   await saveFile(key, image.buffer);
-  try {
-    await customizationRepository.setLogoKey(restaurantId, key);
-  } catch (error) {
-    await deleteFile(key);
-    throw error;
-  }
-  await deleteFile(current.customization?.logoKey);
+  return swapLogo(restaurantId, key);
+}
 
-  publishMenuUpdated(restaurantId);
-  return getCustomization(restaurantId);
+/** Remove o logotipo; o cardápio volta a mostrar só o nome do restaurante. */
+export function removeLogo(restaurantId) {
+  return swapLogo(restaurantId, null);
 }

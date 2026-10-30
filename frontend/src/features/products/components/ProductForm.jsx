@@ -1,11 +1,23 @@
-import { useState } from 'react';
-import { Link } from 'react-router';
-import { Button } from '../../../components/admin/Button.jsx';
-import { Field, inputClass } from '../../../components/admin/Field.jsx';
+import { useEffect, useRef, useState } from 'react';
+import { Alert } from '../../../components/admin/Alert.jsx';
+import { Badge } from '../../../components/admin/Badge.jsx';
+import { Button, LinkButton } from '../../../components/admin/Button.jsx';
+import {
+  AffixInput,
+  Field,
+  Select,
+  Switch,
+  Textarea,
+  TextInput,
+} from '../../../components/admin/Field.jsx';
+import { FormSection } from '../../../components/admin/FormSection.jsx';
 import { ImageInput } from '../../../components/admin/ImageInput.jsx';
-import { apiValidationErrors, validateForm } from '../../../utils/validate-form.js';
 import { formatMoneyInput } from '../../../utils/money-input.js';
+import { apiValidationErrors, validateForm } from '../../../utils/validate-form.js';
+import { publicationStatus } from '../utils/publication.js';
 import { productSchema } from '../validators/product.schema.js';
+
+const LIMITS = { name: 120, shortDescription: 300, detailedDescription: 2000 };
 
 function initialValues(product) {
   return {
@@ -15,39 +27,59 @@ function initialValues(product) {
     shortDescription: product?.shortDescription ?? '',
     detailedDescription: product?.detailedDescription ?? '',
     image: null,
+    removeImage: false,
     isActive: product?.isActive ?? true,
     isAvailable: product?.isAvailable ?? true,
   };
 }
 
+/** Contador de caracteres para campos com limite. */
+function Counter({ value, max }) {
+  return (
+    <span className="text-xs text-admin-faint tabular-nums" aria-hidden="true">
+      {value.length}/{max}
+    </span>
+  );
+}
+
 /**
- * Formulário de produto (cadastro e edição).
+ * Formulário de produto (cadastro e edição) em grupos: informações, preço e categoria, foto e
+ * exibição. Mostra como o produto ficará no cardápio antes de salvar.
  * `onSubmit` recebe os valores validados (preço já como "12.50") e deve lançar erro se falhar.
  */
 export function ProductForm({ product, categories, submitLabel, onSubmit }) {
-  const isEdit = Boolean(product);
+  const formRef = useRef(null);
   const [values, setValues] = useState(() => initialValues(product));
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      formRef.current?.querySelector('[aria-invalid="true"]')?.focus();
+    }
+  }, [errors]);
+
   const setField = (field, value) => setValues((previous) => ({ ...previous, [field]: value }));
-  const bindInput = (field) => ({
+  const bind = (field) => ({
     value: values[field],
     onChange: (event) => setField(field, event.target.value),
   });
-  const bindCheckbox = (field) => ({
-    checked: values[field],
-    onChange: (event) => setField(field, event.target.checked),
+
+  const selectedCategory = categories.find((category) => category.id === values.categoryId);
+  const hasPhoto = Boolean(values.image) || (Boolean(product?.imageUrl) && !values.removeImage);
+  const preview = publicationStatus({
+    isActive: values.isActive,
+    isAvailable: values.isAvailable,
+    imageUrl: hasPhoto ? 'foto' : null,
+    category: { isActive: selectedCategory?.isActive ?? true },
   });
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (submitting) return;
     setFormError(null);
-    const { data, errors: fieldErrors } = validateForm(
-      productSchema({ requireImage: !isEdit }),
-      values,
-    );
+    const { data, errors: fieldErrors } = validateForm(productSchema, values);
     setErrors(fieldErrors ?? {});
     if (!data) return;
 
@@ -55,97 +87,150 @@ export function ProductForm({ product, categories, submitLabel, onSubmit }) {
     try {
       await onSubmit(data);
     } catch (error) {
-      const apiErrors = apiValidationErrors(error);
-      if (apiErrors) setErrors(apiErrors);
+      setErrors(apiValidationErrors(error) ?? {});
       setFormError(error.message);
       setSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
-      {formError && (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
-          {formError}
-        </p>
-      )}
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      noValidate
+      className="rounded-admin-panel border border-admin-line bg-admin-surface"
+    >
+      <div className="px-5 py-8 sm:px-8">
+        {formError && (
+          <Alert tone="danger" title="Não foi possível salvar" className="mb-8">
+            {formError}
+          </Alert>
+        )}
 
-      <div className="grid gap-5 md:grid-cols-[1fr_16rem]">
-        <div className="space-y-5">
-          <Field label="Nome *" error={errors.name}>
-            <input maxLength={120} className={inputClass} {...bindInput('name')} />
+        <FormSection title="Informações" description="Nome e descrições exibidos para os clientes.">
+          <Field
+            label="Nome"
+            error={errors.name}
+            required
+            action={<Counter value={values.name} max={LIMITS.name} />}
+          >
+            <TextInput maxLength={LIMITS.name} {...bind('name')} />
           </Field>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Preço (R$) *" hint="Ex.: 24,90" error={errors.price}>
-              <input inputMode="decimal" className={inputClass} {...bindInput('price')} />
-            </Field>
-            <Field label="Categoria *" error={errors.categoryId}>
-              <select className={inputClass} {...bindInput('categoryId')}>
-                <option value="">Selecione...</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-
           <Field
             label="Descrição curta"
-            hint="Aparece na listagem do cardápio."
+            hint="Aparece na lista do cardápio."
             error={errors.shortDescription}
+            optional
+            action={<Counter value={values.shortDescription} max={LIMITS.shortDescription} />}
           >
-            <input maxLength={300} className={inputClass} {...bindInput('shortDescription')} />
+            <TextInput maxLength={LIMITS.shortDescription} {...bind('shortDescription')} />
           </Field>
-
           <Field
             label="Descrição detalhada"
             hint="Aparece ao abrir os detalhes do produto."
             error={errors.detailedDescription}
+            optional
+            action={<Counter value={values.detailedDescription} max={LIMITS.detailedDescription} />}
           >
-            <textarea
+            <Textarea
               rows={4}
-              maxLength={2000}
-              className={inputClass}
-              {...bindInput('detailedDescription')}
+              maxLength={LIMITS.detailedDescription}
+              {...bind('detailedDescription')}
             />
           </Field>
+        </FormSection>
 
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-slate-800">Situação</legend>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" {...bindCheckbox('isActive')} /> Ativo
-              <span className="text-slate-500">(inativo nunca aparece no cardápio)</span>
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" {...bindCheckbox('isAvailable')} /> Disponível
-              <span className="text-slate-500">(desmarque quando o item acabar)</span>
-            </label>
-          </fieldset>
-        </div>
+        <FormSection title="Preço e categoria">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Preço" hint="Ex.: 24,90" error={errors.price} required>
+              <AffixInput prefix="R$" inputMode="decimal" {...bind('price')} />
+            </Field>
+            <Field
+              label="Categoria"
+              error={errors.categoryId}
+              required
+              hint={
+                selectedCategory && !selectedCategory.isActive
+                  ? 'Esta categoria está oculta: o produto não aparece no cardápio enquanto ela estiver oculta.'
+                  : undefined
+              }
+            >
+              <Select {...bind('categoryId')}>
+                <option value="">Selecione...</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                    {category.isActive ? '' : ' (oculta)'}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+        </FormSection>
 
-        <ImageInput
-          label={isEdit ? 'Fotografia (envie outra para substituir)' : 'Fotografia *'}
-          currentUrl={product?.imageUrl}
-          value={values.image}
-          onChange={(file) => setField('image', file)}
-          error={errors.image}
-          previewClassName="aspect-square w-full"
-        />
+        <FormSection
+          title="Foto"
+          description="Opcional. Sem foto, o produto fica salvo, mas só aparece no cardápio quando receber uma."
+        >
+          <ImageInput
+            label="Fotografia do produto"
+            currentUrl={values.removeImage ? null : product?.imageUrl}
+            value={values.image}
+            onChange={(file) => {
+              setField('image', file);
+              if (file) setField('removeImage', false);
+            }}
+            onRemove={product?.imageUrl ? () => setField('removeImage', true) : undefined}
+            removeLabel="Remover foto"
+            error={errors.image}
+            previewClassName="size-36"
+          />
+          {values.removeImage && (
+            <Alert
+              tone="warning"
+              action={
+                <Button variant="ghost" size="sm" onClick={() => setField('removeImage', false)}>
+                  Desfazer
+                </Button>
+              }
+            >
+              A foto atual será removida ao salvar.
+            </Alert>
+          )}
+        </FormSection>
+
+        <FormSection
+          title="Exibição"
+          description="Controla se o produto aparece para os clientes, sem apagar nada."
+        >
+          <Switch
+            label="Ativo"
+            description="Inativo nunca aparece no cardápio."
+            checked={values.isActive}
+            onChange={(checked) => setField('isActive', checked)}
+          />
+          <Switch
+            label="Disponível"
+            description="Desligue quando o item acabar; ele volta a aparecer quando você religar."
+            checked={values.isAvailable}
+            onChange={(checked) => setField('isAvailable', checked)}
+          />
+          <p className="flex flex-wrap items-center gap-2 text-[13px] text-admin-muted">
+            Ao salvar:
+            <Badge tone={preview.tone}>
+              {preview.published ? 'Aparece no cardápio' : `Fora do cardápio · ${preview.label}`}
+            </Badge>
+          </p>
+        </FormSection>
       </div>
 
-      <div className="flex gap-2">
-        <Button type="submit" disabled={submitting}>
-          {submitting ? 'Salvando...' : submitLabel}
-        </Button>
-        <Link
-          to="/admin/produtos"
-          className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-        >
+      <div className="sticky bottom-0 flex flex-col-reverse gap-2 rounded-b-admin-panel border-t border-admin-line bg-admin-subtle/95 px-5 py-4 backdrop-blur-sm sm:flex-row sm:justify-end sm:px-8">
+        <LinkButton to="/admin/produtos" variant="secondary">
           Cancelar
-        </Link>
+        </LinkButton>
+        <Button type="submit" loading={submitting}>
+          {submitLabel}
+        </Button>
       </div>
     </form>
   );

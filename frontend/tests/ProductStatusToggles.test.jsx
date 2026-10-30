@@ -5,7 +5,7 @@ import { ProductStatusToggles } from '../src/features/availability/components/Pr
 afterEach(cleanup);
 
 describe('ProductStatusToggles', () => {
-  it('mostra a situação atual como interruptores acessíveis', () => {
+  it('mostra a situação atual como interruptores com nome estável', () => {
     render(
       <ProductStatusToggles
         product={{ name: 'Pudim', isActive: true, isAvailable: false }}
@@ -13,11 +13,11 @@ describe('ProductStatusToggles', () => {
       />,
     );
 
-    const [active, available] = screen.getAllByRole('switch');
+    // O nome acessível não muda com o estado (o estado é o aria-checked).
+    const active = screen.getByRole('switch', { name: 'Ativo: Pudim' });
+    const available = screen.getByRole('switch', { name: 'Disponível: Pudim' });
     expect(active.getAttribute('aria-checked')).toBe('true');
-    expect(active.textContent).toBe('Ativo');
     expect(available.getAttribute('aria-checked')).toBe('false');
-    expect(available.textContent).toBe('Indisponível');
   });
 
   it('solicita a inversão do campo clicado', () => {

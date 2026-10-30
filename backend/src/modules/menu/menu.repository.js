@@ -11,7 +11,8 @@ export const PUBLISHED_PRODUCT_WHERE = Object.freeze({
 
 /**
  * Busca o cardápio publicável de um restaurante pelo slug.
- * Seleciona explicitamente apenas campos públicos e somente produtos publicáveis.
+ * Seleciona explicitamente apenas campos públicos, somente categorias ativas e somente produtos
+ * publicáveis.
  */
 export function findPublishedMenuBySlug(slug) {
   return prisma.restaurant.findUnique({
@@ -24,7 +25,9 @@ export function findPublishedMenuBySlug(slug) {
       customization: {
         select: { logoKey: true, primaryColor: true, secondaryColor: true },
       },
+      // Categoria oculta pelo restaurante não aparece, nem os produtos dela.
       categories: {
+        where: { isActive: true },
         orderBy: DISPLAY_ORDER,
         select: {
           id: true,
