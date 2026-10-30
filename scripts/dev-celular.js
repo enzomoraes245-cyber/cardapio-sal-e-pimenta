@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const FRONTEND_PORT = 5173;
-const API_PORT = Number(process.env.PORT) || 3333;
+// API_PORT, não PORT: ferramentas que sobem o script podem definir PORT para o frontend.
+const API_PORT = Number(process.env.API_PORT) || 3333;
 const IS_WINDOWS = process.platform === 'win32';
 
 // Adaptadores virtuais (WSL, Docker, VPN, VMs) têm IPs que o celular não alcança.
