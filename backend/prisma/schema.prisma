@@ -33,6 +33,7 @@ model Restaurant {
   features      RestaurantFeature[]
   subscription  Subscription?
   invoices      Invoice[]
+  payments      Payment[]
   auditEvents   AuditEvent[]
 
   @@index([status])
@@ -86,24 +87,79 @@ enum InvoiceStatus {
   CANCELED
 }
 
-/// Fatura mensal. "Vencida" = OPEN com due_date no passado (calculado, não gravado).
+/// Fatura mensal. "Vencida" = OPEN com due_date anterior a hoje no fuso do negócio (calculado,
+/// não gravado). Nunca é apagada: pagamento, estorno e cancelamento ficam registrados.
 model Invoice {
   id             String        @id @default(uuid()) @db.Uuid
   restaurantId   String        @map("restaurant_id") @db.Uuid
   /// Primeiro dia do mês de referência.
   referenceMonth DateTime      @map("reference_month") @db.Date
+  /// Valor copiado da assinatura na geração: alterar a mensalidade não muda faturas existentes.
   amount         Decimal       @db.Decimal(10, 2)
   dueDate        DateTime      @map("due_date") @db.Date
   status         InvoiceStatus @default(OPEN)
+  /// Quando o pagamento válido foi registrado (a data do pagamento fica em payments.paid_on).
   paidAt         DateTime?     @map("paid_at") @db.Timestamptz(3)
+  /// Cancelamento (só de fatura em aberto, com motivo). Reabrir limpa estes campos; o anterior
+  /// continua no histórico (audit_events).
+  canceledAt     DateTime?     @map("canceled_at") @db.Timestamptz(3)
+  canceledById   String?       @map("canceled_by_id") @db.Uuid
+  canceledByName String?       @map("canceled_by_name") @db.VarChar(120)
+  cancelReason   String?       @map("cancel_reason") @db.VarChar(300)
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+  payments   Payment[]
 
   @@unique([restaurantId, referenceMonth])
+  /// Alvo da FK composta de payments (pagamento e fatura do mesmo restaurante).
+  @@unique([id, restaurantId])
   @@index([status, dueDate])
   @@map("invoices")
+}
+
+enum PaymentMethod {
+  PIX
+  BOLETO
+  TRANSFER
+  CARD
+  CASH
+  OTHER
+}
+
+/// Pagamento de mensalidade registrado manualmente pela plataforma (sem gateway). Nunca é
+/// apagado: o estorno marca o registro (com autor e motivo) e a fatura volta a ficar em aberto.
+model Payment {
+  id              String         @id @default(uuid()) @db.Uuid
+  invoiceId       String         @map("invoice_id") @db.Uuid
+  restaurantId    String         @map("restaurant_id") @db.Uuid
+  /// Igual a invoice_id enquanto o pagamento vale; NULL depois do estorno. O índice único garante
+  /// no máximo um pagamento válido por fatura (o Prisma não representa índice parcial).
+  activeInvoiceId String?        @unique @map("active_invoice_id") @db.Uuid
+  /// Sempre o valor da fatura (não há pagamento parcial, juros ou desconto).
+  amount          Decimal        @db.Decimal(10, 2)
+  /// Data em que o valor foi recebido, informada pelo operador.
+  paidOn          DateTime       @map("paid_on") @db.Date
+  /// NULL só nas baixas anteriores ao controle de pagamentos (forma não registrada).
+  method          PaymentMethod?
+  notes           String?        @db.VarChar(300)
+  /// Operador que registrou (sem FK, como no histórico). NULL nas baixas migradas.
+  recordedById    String?        @map("recorded_by_id") @db.Uuid
+  recordedByName  String?        @map("recorded_by_name") @db.VarChar(120)
+  recordedAt      DateTime       @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  voidedAt        DateTime?      @map("voided_at") @db.Timestamptz(3)
+  voidedById      String?        @map("voided_by_id") @db.Uuid
+  voidedByName    String?        @map("voided_by_name") @db.VarChar(120)
+  voidReason      String?        @map("void_reason") @db.VarChar(300)
+
+  invoice    Invoice    @relation(fields: [invoiceId, restaurantId], references: [id, restaurantId], onDelete: Restrict)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([restaurantId, paidOn])
+  @@index([paidOn])
+  @@map("payments")
 }
 
 /// Operador do backoffice da plataforma. Não pertence a nenhum restaurante.

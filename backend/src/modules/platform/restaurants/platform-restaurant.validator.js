@@ -5,6 +5,7 @@ import {
   newPasswordSchema,
   optionalEmailSchema,
   optionalPhoneSchema,
+  reasonSchema,
 } from '../../../shared/utils/common-schemas.js';
 import { restaurantSlugSchema } from '../../restaurants/restaurant.validator.js';
 
@@ -23,9 +24,6 @@ const adminEmail = z
   .pipe(z.email('Informe um e-mail válido.'));
 
 const adminSchema = z.object({ name: adminName, email: adminEmail, password: newPasswordSchema });
-
-const reasonSchema = (message) =>
-  z.string(message).trim().min(1, message).max(300, 'Use no máximo 300 caracteres.');
 
 const optionalReasonSchema = z
   .string()

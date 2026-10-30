@@ -4,14 +4,28 @@ import { idParamsSchema } from '../../../shared/utils/common-schemas.js';
 import { subscriptionSchema } from '../restaurants/platform-restaurant.validator.js';
 import * as billingController from './billing.controller.js';
 import {
+  cancelInvoiceSchema,
   generateInvoicesSchema,
   listInvoicesQuerySchema,
-  updateInvoiceSchema,
+  listPaymentsQuerySchema,
+  overviewQuerySchema,
+  recordPaymentSchema,
+  reopenInvoiceSchema,
+  voidPaymentSchema,
 } from './billing.validator.js';
 
-/** Assinaturas e faturas. Montadas em /api/v1/platform. */
+/**
+ * Assinaturas, mensalidades, pagamentos e visão geral. Montadas em /api/v1/platform.
+ * Cada mudança de situação tem a própria rota (com motivo quando aplicável); não há troca livre
+ * de status.
+ */
 export const billingRoutes = Router();
 
+billingRoutes.get(
+  '/overview',
+  validate({ query: overviewQuerySchema }),
+  billingController.getOverview,
+);
 billingRoutes.put(
   '/restaurants/:id/subscription',
   validate({ params: idParamsSchema, body: subscriptionSchema }),
@@ -27,8 +41,28 @@ billingRoutes.post(
   validate({ body: generateInvoicesSchema }),
   billingController.generateInvoices,
 );
-billingRoutes.patch(
-  '/invoices/:id',
-  validate({ params: idParamsSchema, body: updateInvoiceSchema }),
-  billingController.updateInvoice,
+billingRoutes.post(
+  '/invoices/:id/payments',
+  validate({ params: idParamsSchema, body: recordPaymentSchema }),
+  billingController.recordPayment,
+);
+billingRoutes.post(
+  '/invoices/:id/cancel',
+  validate({ params: idParamsSchema, body: cancelInvoiceSchema }),
+  billingController.cancelInvoice,
+);
+billingRoutes.post(
+  '/invoices/:id/reopen',
+  validate({ params: idParamsSchema, body: reopenInvoiceSchema }),
+  billingController.reopenInvoice,
+);
+billingRoutes.get(
+  '/payments',
+  validate({ query: listPaymentsQuerySchema }),
+  billingController.listPayments,
+);
+billingRoutes.post(
+  '/payments/:id/void',
+  validate({ params: idParamsSchema, body: voidPaymentSchema }),
+  billingController.voidPayment,
 );

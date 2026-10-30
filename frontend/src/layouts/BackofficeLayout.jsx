@@ -1,13 +1,21 @@
-import { ReceiptIcon, StoreIcon } from '../components/admin/icons.jsx';
+import { BanknoteIcon, OverviewIcon, ReceiptIcon, StoreIcon } from '../components/admin/icons.jsx';
 import { PLATFORM_AREA } from '../features/auth/areas.js';
 import { useSession } from '../features/auth/hooks/useSession.js';
 import { AdminShell } from './AdminShell.jsx';
 
 const NAVIGATION = [
-  { items: [{ to: '/backoffice/restaurantes', label: 'Restaurantes', icon: StoreIcon }] },
+  {
+    items: [
+      { to: '/backoffice', label: 'Visão geral', icon: OverviewIcon, end: true },
+      { to: '/backoffice/restaurantes', label: 'Restaurantes', icon: StoreIcon },
+    ],
+  },
   {
     label: 'Financeiro',
-    items: [{ to: '/backoffice/faturas', label: 'Mensalidades', icon: ReceiptIcon }],
+    items: [
+      { to: '/backoffice/faturas', label: 'Mensalidades', icon: ReceiptIcon },
+      { to: '/backoffice/pagamentos', label: 'Pagamentos', icon: BanknoteIcon },
+    ],
   },
 ];
 

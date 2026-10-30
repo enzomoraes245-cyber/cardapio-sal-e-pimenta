@@ -86,7 +86,13 @@ export function LinkButton({
     <>
       {Icon && <Icon size={ICON_SIZES[size]} />}
       {children}
-      {external && <span className="sr-only"> (abre em nova aba)</span>}
+      {/* Espaço fora do span: o cálculo do nome acessível descarta espaços nas bordas dele. */}
+      {external && (
+        <>
+          {' '}
+          <span className="sr-only">(abre em nova aba)</span>
+        </>
+      )}
     </>
   );
   if (href) {

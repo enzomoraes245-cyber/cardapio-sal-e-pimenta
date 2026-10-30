@@ -23,6 +23,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.js'],
+    // Um arquivo por vez: os testes compartilham o banco e alguns conferem números globais
+    // (geração de mensalidades, visão geral da plataforma).
+    fileParallelism: false,
     testTimeout: 15_000,
     hookTimeout: 30_000,
     env: { DATABASE_URL: testDatabaseUrl, NODE_ENV: 'test', MAIL_DRIVER: 'log' },

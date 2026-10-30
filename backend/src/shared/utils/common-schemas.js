@@ -29,6 +29,10 @@ export function optionalText(max) {
     .nullish();
 }
 
+/** Motivo obrigatório de uma ação (suspensão, cancelamento, estorno...), até 300 caracteres. */
+export const reasonSchema = (message) =>
+  z.string(message).trim().min(1, message).max(300, 'Use no máximo 300 caracteres.');
+
 /** Data "AAAA-MM-DD" válida (rejeita, por exemplo, 2026-02-30). */
 export const isoDateSchema = z
   .string('Informe a data.')

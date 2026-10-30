@@ -39,6 +39,8 @@ export async function createRestaurantFixture(label) {
 export async function deleteRestaurantFixtures(restaurantIds) {
   const where = { restaurantId: { in: restaurantIds } };
   await prisma.auditEvent.deleteMany({ where });
+  await prisma.payment.deleteMany({ where });
+  await prisma.invoice.deleteMany({ where });
   await prisma.product.deleteMany({ where });
   await prisma.category.deleteMany({ where });
   await prisma.adminUser.deleteMany({ where });

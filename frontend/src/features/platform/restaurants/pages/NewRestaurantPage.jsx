@@ -15,16 +15,12 @@ import { PasswordInput } from '../../../../components/admin/PasswordInput.jsx';
 import { useToast } from '../../../../components/admin/Toast.jsx';
 import { useSubmit } from '../../../../hooks/useSubmit.js';
 import { createRequestId } from '../../../../utils/request-id.js';
+import { todayIsoDate } from '../../../../utils/format-date.js';
 import { slugify } from '../../../../utils/slugify.js';
 import { apiValidationErrors, validateForm } from '../../../../utils/validate-form.js';
 import { createRestaurant } from '../services/platform-restaurants.service.js';
 import { ALL_FEATURES_ENABLED, FEATURE_LABELS } from '../utils/feature-labels.js';
 import { newRestaurantSchema } from '../validators/restaurant.schema.js';
-
-function todayIso() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
 
 const initialValues = () => ({
   name: '',
@@ -32,7 +28,7 @@ const initialValues = () => ({
   contactPhone: '',
   contactEmail: '',
   admin: { name: '', email: '', password: '' },
-  subscription: { monthlyAmount: '', dueDay: '10', startedAt: todayIso() },
+  subscription: { monthlyAmount: '', dueDay: '10', startedAt: todayIsoDate() },
   features: ALL_FEATURES_ENABLED,
 });
 

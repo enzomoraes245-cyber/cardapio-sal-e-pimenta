@@ -270,15 +270,20 @@ describe('cobrança manual (DEC-006, item 2)', () => {
   const month = '2026-01';
 
   it('gera as faturas do mês uma única vez', async () => {
-    await asOperator.put(`/restaurants/${tenant.restaurant.id}/subscription`, {
-      monthlyAmount: '89.90',
-      dueDay: 10,
-    });
-    // Assinatura iniciada antes do mês de referência do teste.
-    await prisma.subscription.updateMany({
-      where: { restaurantId: { in: [tenant.restaurant.id, created.id] } },
-      data: { startedAt: new Date('2025-12-01') },
-    });
+    // Assinaturas iniciadas antes do mês de referência do teste.
+    const subscriptions = await Promise.all([
+      asOperator.put(`/restaurants/${tenant.restaurant.id}/subscription`, {
+        monthlyAmount: '89.90',
+        dueDay: 10,
+        startedAt: '2025-12-01',
+      }),
+      asOperator.put(`/restaurants/${created.id}/subscription`, {
+        monthlyAmount: '149.90',
+        dueDay: 5,
+        startedAt: '2025-12-01',
+      }),
+    ]);
+    expect(subscriptions.map((response) => response.status)).toEqual([200, 200]);
 
     const first = await asOperator.post('/invoices/generate', { month });
     const second = await asOperator.post('/invoices/generate', { month });
@@ -288,33 +293,50 @@ describe('cobrança manual (DEC-006, item 2)', () => {
     expect(second.body.data.created).toBe(0);
 
     const invoices = await asOperator.get(
-      `/invoices?month=${month}&restaurantId=${tenant.restaurant.id}`,
+      `/invoices?from=${month}&to=${month}&restaurantId=${tenant.restaurant.id}`,
     );
-    expect(invoices.body.data).toEqual([
+    expect(invoices.body.data).toMatchObject({ total: 1, sum: '89.90' });
+    expect(invoices.body.data.items).toEqual([
       expect.objectContaining({
         referenceMonth: month,
         amount: '89.90',
         dueDate: '2026-01-10',
         status: 'OPEN',
+        situation: 'overdue',
         overdue: true,
+        payment: null,
       }),
     ]);
   });
 
-  it('dá baixa manual e a fatura deixa de constar como vencida', async () => {
+  it('registra o pagamento e a fatura deixa de constar como vencida', async () => {
     const overdue = await asOperator.get(
-      `/invoices?overdue=true&restaurantId=${tenant.restaurant.id}`,
+      `/invoices?situation=overdue&restaurantId=${tenant.restaurant.id}`,
     );
-    expect(overdue.body.data).toHaveLength(1);
+    expect(overdue.body.data.items).toHaveLength(1);
 
-    const paid = await asOperator.patch(`/invoices/${overdue.body.data[0].id}`, { status: 'PAID' });
-    expect(paid.body.data).toMatchObject({ status: 'PAID', overdue: false });
-    expect(paid.body.data.paidAt).toBeTruthy();
+    const paid = await asOperator.post(`/invoices/${overdue.body.data.items[0].id}/payments`, {
+      paidOn: '2026-01-12',
+      method: 'PIX',
+    });
+    expect(paid.status).toBe(201);
+    expect(paid.body.data).toMatchObject({
+      status: 'PAID',
+      situation: 'paid',
+      overdue: false,
+      payment: {
+        amount: '89.90',
+        paidOn: '2026-01-12',
+        method: 'PIX',
+        recordedBy: { name: operator.platformAdmin.name },
+        voided: false,
+      },
+    });
 
     const afterPayment = await asOperator.get(
-      `/invoices?overdue=true&restaurantId=${tenant.restaurant.id}`,
+      `/invoices?situation=overdue&restaurantId=${tenant.restaurant.id}`,
     );
-    expect(afterPayment.body.data).toHaveLength(0);
+    expect(afterPayment.body.data.items).toHaveLength(0);
     const list = await asOperator.get('/restaurants');
     expect(list.body.data.find((r) => r.id === tenant.restaurant.id).overdueInvoices).toBe(0);
   });
@@ -323,9 +345,11 @@ describe('cobrança manual (DEC-006, item 2)', () => {
     await asOperator.post(`/restaurants/${created.id}/suspend`, { reason: 'Teste' });
 
     const response = await asOperator.post('/invoices/generate', { month: '2026-02' });
-    const invoices = await asOperator.get(`/invoices?month=2026-02&restaurantId=${created.id}`);
+    const invoices = await asOperator.get(
+      `/invoices?from=2026-02&to=2026-02&restaurantId=${created.id}`,
+    );
 
     expect(response.status).toBe(200);
-    expect(invoices.body.data).toHaveLength(0);
+    expect(invoices.body.data.items).toHaveLength(0);
   });
 });
