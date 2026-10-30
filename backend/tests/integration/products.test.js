@@ -113,6 +113,39 @@ describe('cadastro de produtos (MOD-03)', () => {
     expect(response.body.error.code).toBe('PAYLOAD_TOO_LARGE');
   });
 
+  it('responde 400 (e não 500) para corpo multipart malformado', async () => {
+    const response = await request(app)
+      .post('/api/v1/admin/products')
+      .set('Cookie', tenantA.cookie)
+      .set('Content-Type', 'multipart/form-data; boundary=limite')
+      .send('--limite\r\nContent-Disposition: form-data; name="name"\r\n\r\nSem fim');
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe('MALFORMED_MULTIPART');
+  });
+
+  it('explica o erro quando a imagem vem no campo errado ou em dobro', async () => {
+    const wrongField = await request(app)
+      .post('/api/v1/admin/products')
+      .set('Cookie', tenantA.cookie)
+      .field('name', 'X')
+      .attach('foto', VALID_PNG, 'foto.png');
+    const twoFiles = await request(app)
+      .post('/api/v1/admin/products')
+      .set('Cookie', tenantA.cookie)
+      .field('name', 'X')
+      .attach('image', VALID_PNG, 'a.png')
+      .attach('image', OTHER_PNG, 'b.png');
+
+    expect(wrongField.status).toBe(400);
+    expect(wrongField.body.error.details[0]).toMatchObject({
+      path: 'image',
+      message: 'Envie a imagem no campo "image".',
+    });
+    expect(twoFiles.status).toBe(400);
+    expect(twoFiles.body.error.details[0].message).toBe('Envie apenas uma imagem.');
+  });
+
   it('não aceita categoria de outro restaurante (RN-003)', async () => {
     const response = await postProduct(tenantA, {
       name: 'X',

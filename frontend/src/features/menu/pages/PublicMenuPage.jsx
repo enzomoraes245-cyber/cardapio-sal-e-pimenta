@@ -52,19 +52,12 @@ export function PublicMenuPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [showingFavorites, setShowingFavorites] = useState(false);
   const [openProductId, setOpenProductId] = useState(null);
-  const [toast, setToast] = useState(null);
   const { favorites, toggleFavorite } = useFavorites(slug);
 
   const restaurantName = menu?.restaurant.name;
   useEffect(() => {
     if (restaurantName) document.title = `${restaurantName} · Cardápio`;
   }, [restaurantName]);
-
-  useEffect(() => {
-    if (!toast) return undefined;
-    const timer = setTimeout(() => setToast(null), 2600);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   // Carregamento e erro usam a mesma tipografia e cores neutras do cardápio.
   if (status === 'loading') {
@@ -191,18 +184,8 @@ export function PublicMenuPage() {
           categoryName={openCategory.name}
           isFavorite={favorites.has(openProduct.id)}
           onToggleFavorite={toggleFavorite}
-          onAdd={({ product, quantity }) => setToast(`${quantity}× ${product.name} adicionado`)}
           onClose={() => setOpenProductId(null)}
         />
-      )}
-
-      {toast && (
-        <div
-          role="status"
-          className="fixed inset-x-5 bottom-6 z-30 mx-auto max-w-sm rounded-2xl bg-ink px-4 py-3 text-center text-sm font-medium text-white shadow-lg"
-        >
-          {toast}
-        </div>
       )}
     </div>
   );

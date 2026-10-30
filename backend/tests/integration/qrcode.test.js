@@ -4,11 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { prisma } from '../../src/config/database.js';
 import { env } from '../../src/config/env.js';
-import {
-  QR_CODE_OPTIONS,
-  QR_CODE_SVG_OPTIONS,
-  classifyAddress,
-} from '../../src/modules/qrcode/qrcode.service.js';
+import { QR_CODE_OPTIONS, QR_CODE_SVG_OPTIONS } from '../../src/modules/qrcode/qrcode.service.js';
+import { classifyAddress } from '../../src/shared/utils/address.js';
 import { createTenantFixture } from './helpers/auth.js';
 import { deleteRestaurantFixtures } from './helpers/fixtures.js';
 import { VALID_PNG } from './helpers/images.js';

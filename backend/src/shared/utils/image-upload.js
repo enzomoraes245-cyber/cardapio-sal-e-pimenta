@@ -31,7 +31,24 @@ const upload = multer({
   limits: { fileSize: env.UPLOAD_MAX_BYTES, files: 1, fields: 20 },
 });
 
-/** Middleware que recebe um único arquivo de imagem em multipart/form-data. */
+/** Mensagem de cada limite do Multer, no campo da imagem. */
+function multerMessage(code, fieldName) {
+  switch (code) {
+    case 'LIMIT_FILE_COUNT':
+      return 'Envie apenas uma imagem.';
+    case 'LIMIT_UNEXPECTED_FILE':
+      return `Envie a imagem no campo "${fieldName}".`;
+    default:
+      // LIMIT_FIELD_COUNT, LIMIT_FIELD_KEY, LIMIT_FIELD_VALUE, LIMIT_PART_COUNT...
+      return 'O formulário enviado tem campos demais ou grandes demais.';
+  }
+}
+
+/**
+ * Middleware que recebe um único arquivo de imagem em multipart/form-data. Erros de envio viram
+ * respostas claras: 413 para imagem grande demais e 400 para limites do formulário ou corpo
+ * multipart malformado (antes, este último respondia 500).
+ */
 export function imageUpload(fieldName) {
   const handler = upload.single(fieldName);
   return function receiveImage(req, res, next) {
@@ -48,11 +65,18 @@ export function imageUpload(fieldName) {
       if (error instanceof multer.MulterError) {
         return next(
           new ValidationError([
-            { source: 'body', path: fieldName, message: INVALID_IMAGE_MESSAGE },
+            { source: 'body', path: fieldName, message: multerMessage(error.code, fieldName) },
           ]),
         );
       }
-      return next(error);
+      // Com armazenamento em memória, os demais erros vêm da leitura do corpo (multipart
+      // incompleto, sem boundary, cabeçalho de parte inválido).
+      return next(
+        new AppError('Não foi possível ler o arquivo enviado. Tente enviar novamente.', {
+          statusCode: 400,
+          code: 'MALFORMED_MULTIPART',
+        }),
+      );
     });
   };
 }

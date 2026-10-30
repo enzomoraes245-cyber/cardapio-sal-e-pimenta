@@ -4,7 +4,7 @@ import * as authService from './auth.service.js';
 const COOKIE_BASE_OPTIONS = Object.freeze({
   httpOnly: true,
   sameSite: 'lax',
-  secure: env.isProduction,
+  secure: env.COOKIE_SECURE,
   path: '/',
 });
 

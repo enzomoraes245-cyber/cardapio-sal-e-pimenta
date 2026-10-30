@@ -6,7 +6,7 @@ import {
   RestaurantSuspendedError,
 } from '../../shared/errors/app-error.js';
 import { getRestaurantFeatures, toFeatureFlags } from '../restaurants/restaurant-features.js';
-import { findRestaurantIdBySlug } from '../restaurants/restaurant.repository.js';
+import { findRestaurantStatusBySlug } from '../restaurants/restaurant.repository.js';
 import * as menuRepository from './menu.repository.js';
 
 const RESTAURANT_NOT_FOUND_MESSAGE = 'Restaurante não encontrado.';
@@ -25,15 +25,19 @@ export async function getPublicMenu(slug) {
 /**
  * Inscreve um ouvinte nas atualizações do cardápio de um restaurante.
  * Restaurantes suspensos continuam aceitando a conexão (o evento não carrega dados), para que o
- * cardápio aberto volte sozinho quando o restaurante for reativado.
+ * cardápio aberto volte sozinho quando o restaurante for reativado — mesmo com a atualização
+ * automática desligada, que só vale para o cardápio em funcionamento. Antes, o cardápio suspenso
+ * sem esse módulo tentava reconectar a cada poucos segundos, sem fim.
  */
 export async function subscribeToPublicMenu(slug, listener) {
-  const restaurant = await findRestaurantIdBySlug(slug);
+  const restaurant = await findRestaurantStatusBySlug(slug);
   if (!restaurant) throw new NotFoundError(RESTAURANT_NOT_FOUND_MESSAGE);
 
-  const features = await getRestaurantFeatures(restaurant.id);
-  if (!features.realtime) {
-    throw new ForbiddenError('Atualização automática não liberada.', 'FEATURE_DISABLED');
+  if (restaurant.status !== 'SUSPENDED') {
+    const features = await getRestaurantFeatures(restaurant.id);
+    if (!features.realtime) {
+      throw new ForbiddenError('Atualização automática não liberada.', 'FEATURE_DISABLED');
+    }
   }
   return subscribeToMenuUpdates(restaurant.id, listener);
 }

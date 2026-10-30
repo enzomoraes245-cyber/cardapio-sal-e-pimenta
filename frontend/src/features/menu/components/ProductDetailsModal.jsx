@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { formatPrice } from '../../../utils/format-currency.js';
-import { BackIcon, HeartIcon, MinusIcon, PlusIcon } from './icons.jsx';
+import { BackIcon, HeartIcon } from './icons.jsx';
 
 const floatingButton =
   'flex size-11 items-center justify-center rounded-full bg-white shadow-[0_4px_14px_rgba(0,0,0,0.12)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
@@ -11,6 +11,7 @@ const floatingButton =
  * Não há troca de rota, então busca, categoria e rolagem da listagem são preservadas (CA-024).
  * Deve ser montado com `key={product.id}`: abre ao montar e fecha ao desmontar.
  * No celular ocupa a tela inteira; em telas maiores vira um painel centralizado.
+ * Não há pedido pelo cardápio (DEC-008): quantidade, observações e "Adicionar" foram removidos.
  */
 export function ProductDetailsModal({
   product,
@@ -18,13 +19,9 @@ export function ProductDetailsModal({
   onClose,
   isFavorite = false,
   onToggleFavorite,
-  onAdd,
 }) {
   const dialogRef = useRef(null);
   const titleId = `produto-${product.id}-titulo`;
-  const notesId = useId();
-  const [quantity, setQuantity] = useState(1);
-  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -46,13 +43,7 @@ export function ProductDetailsModal({
     if (event.target === dialogRef.current) onClose();
   }
 
-  function handleAdd() {
-    onAdd?.({ product, quantity, notes: notes.trim() });
-    onClose();
-  }
-
   const description = product.detailedDescription ?? product.shortDescription;
-  const total = formatPrice(Number(product.price) * quantity);
 
   return (
     <dialog
@@ -107,53 +98,10 @@ export function ProductDetailsModal({
 
           <div className="h-px shrink-0 bg-line" />
 
-          <div className="flex items-center justify-between">
+          {/* Mesma altura da linha que tinha o seletor de quantidade: o preço não sai do lugar. */}
+          <div className="flex min-h-12 items-center">
             <p className="font-display text-[26px] font-bold">{formatPrice(product.price)}</p>
-            <div className="flex items-center gap-1 rounded-full bg-surface-muted p-1">
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                aria-label="Diminuir quantidade"
-                className="flex size-10 items-center justify-center rounded-full bg-white text-ink"
-              >
-                <MinusIcon />
-              </button>
-              <span aria-live="polite" className="min-w-7 text-center text-base font-semibold">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => q + 1)}
-                aria-label="Aumentar quantidade"
-                className="flex size-10 items-center justify-center rounded-full bg-ink text-white"
-              >
-                <PlusIcon size={16} />
-              </button>
-            </div>
           </div>
-
-          <label htmlFor={notesId} className="flex flex-col gap-2 text-[13px] font-semibold">
-            Observações
-            <textarea
-              id={notesId}
-              rows={2}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Ex.: sem limão, molho à parte"
-              className="resize-none rounded-[14px] border border-line-strong bg-white px-3.5 py-3 text-base font-normal text-ink focus:border-ink focus:outline-none"
-            />
-          </label>
-
-          <div className="flex-1" />
-
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="flex h-14 shrink-0 items-center justify-center gap-2.5 rounded-2xl bg-ink text-base font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-          >
-            Adicionar · {total}
-            <PlusIcon />
-          </button>
         </div>
       </div>
     </dialog>

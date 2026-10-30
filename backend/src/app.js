@@ -15,6 +15,8 @@ export function createApp() {
   const app = express();
 
   app.disable('x-powered-by');
+  // Atrás de proxy reverso, o IP do cliente (limites de tentativas) vem de X-Forwarded-For.
+  app.set('trust proxy', env.TRUST_PROXY);
   app.use(helmet());
 
   // Sem origens configuradas, a API aceita apenas requisições de mesma origem.

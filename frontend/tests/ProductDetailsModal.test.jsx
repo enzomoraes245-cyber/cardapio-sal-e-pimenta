@@ -56,24 +56,20 @@ function MenuHarness() {
 }
 
 describe('modal de detalhes do produto (MOD-07)', () => {
-  it('atualiza o total pela quantidade e envia o pedido ao adicionar', () => {
-    const added = [];
-    const product = CATEGORIES[0].products[0];
-    render(
-      <ProductDetailsModal
-        product={product}
-        onClose={() => {}}
-        onAdd={(item) => added.push(item)}
-      />,
-    );
+  it('não oferece pedido: sem quantidade, observações nem botão de adicionar (DEC-008)', () => {
+    render(<MenuHarness />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Aumentar quantidade' }));
-    fireEvent.change(screen.getByLabelText('Observações'), { target: { value: 'sem cebola' } });
-    const addButton = screen.getByRole('button', { name: /Adicionar/ });
-    expect(addButton.textContent).toMatch(/R\$\s136,00/);
+    // Na listagem, só o card (detalhes) e nenhum botão "+".
+    expect(screen.queryByRole('button', { name: /Adicionar/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver detalhes de Filé à parmegiana' }));
 
-    fireEvent.click(addButton);
-    expect(added).toEqual([{ product, quantity: 2, notes: 'sem cebola' }]);
+    const dialog = screen.getByRole('dialog', { name: 'Filé à parmegiana' });
+    expect(dialog.textContent).toMatch(/R\$\s68,00/);
+    expect(
+      screen.queryByRole('button', { name: /Adicionar|Aumentar quantidade|Diminuir quantidade/ }),
+    ).toBeNull();
+    expect(screen.queryByLabelText('Observações')).toBeNull();
+    expect(dialog.querySelector('textarea')).toBeNull();
   });
 
   it('abre sobre a listagem com os dados do produto selecionado (CA-022, CA-023)', () => {

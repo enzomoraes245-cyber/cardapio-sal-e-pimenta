@@ -1,9 +1,10 @@
 import { formatPrice } from '../../../utils/format-currency.js';
-import { HeartIcon, PlusIcon } from './icons.jsx';
+import { HeartIcon } from './icons.jsx';
 
 /**
- * Produto na listagem (RF-025): foto, nome, descrição curta e preço, com favoritar e adicionar.
- * Com `onSelect`, a foto e o texto abrem os detalhes (MOD-07) e aparece o botão "+".
+ * Produto na listagem (RF-025): foto, nome, descrição curta e preço, com favoritar.
+ * Com `onSelect`, a foto e o texto abrem os detalhes (MOD-07). Não há pedido pelo cardápio
+ * (DEC-008): o antigo botão "+" de adicionar foi removido.
  */
 export function ProductCard({ product, onSelect, isFavorite = false, onToggleFavorite }) {
   const content = (
@@ -48,34 +49,19 @@ export function ProductCard({ product, onSelect, isFavorite = false, onToggleFav
         <div className={bodyClass}>{content}</div>
       )}
 
-      {(onToggleFavorite || onSelect) && (
+      {onToggleFavorite && (
         <div className="flex shrink-0 flex-col items-end justify-between">
-          {onToggleFavorite ? (
-            <button
-              type="button"
-              onClick={() => onToggleFavorite(product.id)}
-              aria-label={`Favoritar ${product.name}`}
-              aria-pressed={isFavorite}
-              className={`flex size-9 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-ink ${
-                isFavorite ? 'text-brand-text' : 'text-ink'
-              }`}
-            >
-              <HeartIcon filled={isFavorite} />
-            </button>
-          ) : (
-            <span />
-          )}
-          {onSelect && (
-            <button
-              type="button"
-              onClick={() => onSelect(product.id)}
-              aria-haspopup="dialog"
-              aria-label={`Adicionar ${product.name}`}
-              className="flex size-9 items-center justify-center rounded-xl bg-ink text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-            >
-              <PlusIcon />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => onToggleFavorite(product.id)}
+            aria-label={`Favoritar ${product.name}`}
+            aria-pressed={isFavorite}
+            className={`flex size-9 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-ink ${
+              isFavorite ? 'text-brand-text' : 'text-ink'
+            }`}
+          >
+            <HeartIcon filled={isFavorite} />
+          </button>
         </div>
       )}
     </article>
